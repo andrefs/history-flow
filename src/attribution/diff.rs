@@ -8,30 +8,33 @@ pub enum DiffOp {
     /// Lines are equal in both sequences.
     Equal {
         /// Index in the old sequence.
-        old_idx: usize,
+        old_index: usize,
         /// Index in the new sequence.
-        new_idx: usize,
+        new_index: usize,
     },
 
     /// Line was inserted in the new sequence.
     Insert {
         /// Index in the new sequence.
-        new_idx: usize,
+        new_index: usize,
     },
 
     /// Line was deleted from the old sequence.
     Delete {
         /// Index in the old sequence.
-        old_idx: usize,
+        old_index: usize,
     },
 }
 
 impl fmt::Display for DiffOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            DiffOp::Equal { old_idx, new_idx } => write!(f, "  = {} {}", old_idx, new_idx),
-            DiffOp::Insert { new_idx } => write!(f, "  + {}", new_idx),
-            DiffOp::Delete { old_idx } => write!(f, "  - {}", old_idx),
+            DiffOp::Equal {
+                old_index,
+                new_index,
+            } => write!(f, "  = {} {}", old_index, new_index),
+            DiffOp::Insert { new_index } => write!(f, "  + {}", new_index),
+            DiffOp::Delete { old_index } => write!(f, "  - {}", old_index),
         }
     }
 }
@@ -49,8 +52,8 @@ pub fn diff_lines(old: &[String], new: &[String]) -> Vec<DiffOp> {
             } => {
                 for i in 0..len {
                     ops.push(DiffOp::Equal {
-                        old_idx: old_index + i,
-                        new_idx: new_index + i,
+                        old_index: old_index + i,
+                        new_index: new_index + i,
                     });
                 }
             }
@@ -59,7 +62,7 @@ pub fn diff_lines(old: &[String], new: &[String]) -> Vec<DiffOp> {
             } => {
                 for i in 0..new_len {
                     ops.push(DiffOp::Insert {
-                        new_idx: new_index + i,
+                        new_index: new_index + i,
                     });
                 }
             }
@@ -68,7 +71,7 @@ pub fn diff_lines(old: &[String], new: &[String]) -> Vec<DiffOp> {
             } => {
                 for i in 0..old_len {
                     ops.push(DiffOp::Delete {
-                        old_idx: old_index + i,
+                        old_index: old_index + i,
                     });
                 }
             }
@@ -82,12 +85,12 @@ pub fn diff_lines(old: &[String], new: &[String]) -> Vec<DiffOp> {
             } => {
                 for i in 0..old_len {
                     ops.push(DiffOp::Delete {
-                        old_idx: old_index + i,
+                        old_index: old_index + i,
                     });
                 }
                 for i in 0..new_len {
                     ops.push(DiffOp::Insert {
-                        new_idx: new_index + i,
+                        new_index: new_index + i,
                     });
                 }
             }
@@ -109,13 +112,13 @@ mod tests {
             ops,
             vec![
                 DiffOp::Equal {
-                    old_idx: 0,
-                    new_idx: 0
+                    old_index: 0,
+                    new_index: 0
                 },
-                DiffOp::Insert { new_idx: 1 },
+                DiffOp::Insert { new_index: 1 },
                 DiffOp::Equal {
-                    old_idx: 1,
-                    new_idx: 2
+                    old_index: 1,
+                    new_index: 2
                 },
             ]
         );
@@ -130,13 +133,13 @@ mod tests {
             ops,
             vec![
                 DiffOp::Equal {
-                    old_idx: 0,
-                    new_idx: 0
+                    old_index: 0,
+                    new_index: 0
                 },
-                DiffOp::Delete { old_idx: 1 },
+                DiffOp::Delete { old_index: 1 },
                 DiffOp::Equal {
-                    old_idx: 2,
-                    new_idx: 1
+                    old_index: 2,
+                    new_index: 1
                 },
             ]
         );
@@ -151,11 +154,11 @@ mod tests {
             ops,
             vec![
                 DiffOp::Equal {
-                    old_idx: 0,
-                    new_idx: 0
+                    old_index: 0,
+                    new_index: 0
                 },
-                DiffOp::Insert { new_idx: 1 },
-                DiffOp::Insert { new_idx: 2 },
+                DiffOp::Insert { new_index: 1 },
+                DiffOp::Insert { new_index: 2 },
             ]
         );
     }

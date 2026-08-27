@@ -5,7 +5,7 @@
 
 use crate::config::{Config, Source};
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 pub mod wikipedia;
 
@@ -23,6 +23,19 @@ pub struct SourceProbe {
 
     /// Which source backend was probed.
     pub source: Source,
+}
+
+/// A single revision from any source (Wikipedia, Git, etc.).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Revision {
+    /// Revision identifier (pageid|revid for Wikipedia, commit hash for Git).
+    pub id: String,
+    /// Author who made this revision.
+    pub author: String,
+    /// Timestamp of the revision.
+    pub timestamp: DateTime<Utc>,
+    /// Full text content of the revision.
+    pub content: String,
 }
 
 /// Errors produced while probing or importing a source.
