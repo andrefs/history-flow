@@ -1,7 +1,11 @@
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "history-flow", version, about = "History Flow visualization for Wikipedia and Git")]
+#[command(
+    name = "history-flow",
+    version,
+    about = "History Flow visualization for Wikipedia and Git"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -69,22 +73,42 @@ fn main() {
     match cli.command {
         Commands::Probe(args) => {
             println!("probe: not implemented yet");
-            if let Some(t) = args.target { println!("  target: {}", t); }
-            if let Some(c) = args.config { println!("  config: {}", c); }
-            if args.json { println!("  --json"); }
+            if let Some(t) = args.target {
+                println!("  target: {}", t);
+            }
+            if let Some(c) = args.config {
+                println!("  config: {}", c);
+            }
+            if args.json {
+                println!("  --json");
+            }
         }
         Commands::Json(args) => {
             println!("json: not implemented yet");
-            if let Some(t) = args.target { println!("  target: {}", t); }
-            if let Some(c) = args.config { println!("  config: {}", c); }
-            if let Some(o) = args.output { println!("  -o {}", o); }
+            if let Some(t) = args.target {
+                println!("  target: {}", t);
+            }
+            if let Some(c) = args.config {
+                println!("  config: {}", c);
+            }
+            if let Some(o) = args.output {
+                println!("  -o {}", o);
+            }
         }
         Commands::Render(args) => {
             println!("render: not implemented yet");
-            if let Some(t) = args.target { println!("  target: {}", t); }
-            if let Some(c) = args.config { println!("  config: {}", c); }
-            if args.html { println!("  --html"); }
-            if let Some(o) = args.output { println!("  -o {}", o); }
+            if let Some(t) = args.target {
+                println!("  target: {}", t);
+            }
+            if let Some(c) = args.config {
+                println!("  config: {}", c);
+            }
+            if args.html {
+                println!("  --html");
+            }
+            if let Some(o) = args.output {
+                println!("  -o {}", o);
+            }
         }
         Commands::Serve(args) => {
             println!("serve: not implemented yet");
