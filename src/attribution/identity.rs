@@ -43,7 +43,7 @@ pub struct AuthorGrid {
     /// Number of revisions in the grid.
     pub revisions: usize,
 
-    /// 2D grid: grid[rev_index][line_index] = author name.
+    /// 2D grid: grid\[rev_index]\[line_index] = author name.
     pub grid: Vec<Vec<String>>,
 }
 
@@ -211,5 +211,88 @@ fn relink_reverts(lines: &mut [Line]) {
             line.origin_author = orig_author.clone();
             line.origin_rev = *orig_rev;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::attribution::diff::DiffOp;
+    use chrono::{TimeZone, Utc};
+
+    fn rev(id: &str, author: &str, content: &str) -> Revision {
+        Revision {
+            id: id.into(),
+            author: author.into(),
+            timestamp: Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap(),
+            content: content.into(),
+        }
+    }
+
+    #[test]
+    fn revert_relink_add_delete_readd() {
+        // Rev 0: Alice adds "foo"
+        // Rev 1: Bob deletes "foo"
+        // Rev 2: Carol re-adds "foo" -> should re-link to Alice
+        let revisions = vec![
+            rev("0", "Alice", "foo\n"),
+            rev("1", "Bob", ""),
+            rev("2", "Carol", "foo\n"),
+        ];
+        let diffs = vec![
+            vec![DiffOp::Delete { old_index: 0 }], // 0→1: delete "foo"
+            vec![DiffOp::Insert { new_index: 0 }], // 1→2: insert "foo"
+        ];
+
+        let grid = build_identity_graph(&revisions, &diffs).unwrap();
+        // Rev 0 line 0 = Alice
+        assert_eq!(grid.grid[0][0], "Alice");
+        // Rev 1 = empty
+        assert_eq!(grid.grid[1].len(), 0);
+        // Rev 2 line 0 = Alice (re-linked, not Carol)
+        assert_eq!(grid.grid[2][0], "Alice");
+    }
+
+    #[test]
+    fn no_relink_for_new_content() {
+        // Rev 0: Alice adds "foo"
+        // Rev 1: Bob adds "bar" (new, not a revert)
+        let revisions = vec![rev("0", "Alice", "foo\n"), rev("1", "Bob", "foo\nbar\n")];
+        let diffs = vec![vec![
+            DiffOp::Equal {
+                old_index: 0,
+                new_index: 0,
+            },
+            DiffOp::Insert { new_index: 1 },
+        ]];
+
+        let grid = build_identity_graph(&revisions, &diffs).unwrap();
+        assert_eq!(grid.grid[1][0], "Alice"); // foo stays Alice
+        assert_eq!(grid.grid[1][1], "Bob"); // bar is Bob
+    }
+
+    #[test]
+    fn multiple_reverts_pick_earliest() {
+        // Rev 0: Alice adds "foo"
+        // Rev 1: Bob deletes "foo"
+        // Rev 2: Carol adds "foo"
+        // Rev 3: Dave deletes "foo"
+        // Rev 4: Eve adds "foo" -> should re-link to Alice (earliest)
+        let revisions = vec![
+            rev("0", "Alice", "foo\n"),
+            rev("1", "Bob", ""),
+            rev("2", "Carol", "foo\n"),
+            rev("3", "Dave", ""),
+            rev("4", "Eve", "foo\n"),
+        ];
+        let diffs = vec![
+            vec![DiffOp::Delete { old_index: 0 }],
+            vec![DiffOp::Insert { new_index: 0 }],
+            vec![DiffOp::Delete { old_index: 0 }],
+            vec![DiffOp::Insert { new_index: 0 }],
+        ];
+
+        let grid = build_identity_graph(&revisions, &diffs).unwrap();
+        assert_eq!(grid.grid[4][0], "Alice"); // earliest origin wins
     }
 }
