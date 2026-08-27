@@ -1,1 +1,3 @@
-//! Attribution: compute per-line author provenance from a revision list.
+//! Attribution: compute per-line author provenance from revision history.
+
+pub mod diff;
