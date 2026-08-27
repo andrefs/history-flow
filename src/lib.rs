@@ -1,14 +1,13 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+#![warn(missing_docs)]
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+//! history-flow — History Flow visualization for Wikipedia and Git.
+//!
+//! This library provides the three-stage pipeline:
+//! - import: fetch revisions from Wikipedia or Git
+//! - attribution: compute per-line author provenance
+//! - visualize: emit Vega-Lite JSON specs
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub mod attribution;
+pub mod import;
+pub mod visualize;
+
