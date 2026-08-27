@@ -165,6 +165,8 @@ pub fn build_identity_graph(
         rev_line_positions.push(new_positions);
     }
 
+    relink_reverts(&mut lines);
+
     // Build AuthorGrid
     let mut grid = Vec::with_capacity(revisions.len());
     for positions in rev_line_positions.iter() {
@@ -179,4 +181,35 @@ pub fn build_identity_graph(
         revisions: revisions.len(),
         grid,
     })
+}
+
+/// Re-link re-added lines to their original author (revert detection).
+fn relink_reverts(lines: &mut [Line]) {
+    // Map from text to (origin_rev, origin_author) of the earliest deleted line with that text
+    let mut deleted_by_text: HashMap<String, (usize, String)> = HashMap::new();
+    for line in lines.iter() {
+        if line.deleted_in.is_some() {
+            deleted_by_text
+                .entry(line.text.clone())
+                .and_modify(|e| {
+                    if line.origin_rev < e.0 {
+                        e.0 = line.origin_rev;
+                        e.1 = line.origin_author.clone();
+                    }
+                })
+                .or_insert((line.origin_rev, line.origin_author.clone()));
+        }
+    }
+
+    // Apply re-link
+    for line in lines.iter_mut() {
+        if line.deleted_in.is_none()
+            && line.introduced_in > 0
+            && let Some((orig_rev, orig_author)) = deleted_by_text.get(&line.text)
+            && *orig_rev < line.origin_rev
+        {
+            line.origin_author = orig_author.clone();
+            line.origin_rev = *orig_rev;
+        }
+    }
 }
