@@ -1,0 +1,83 @@
+{
+  "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+  "description": "History Flow as a stacked bar: X = revision (column), stack = lines in document order, color = author. Column height is proportional to content size; y is inverted so the document starts at the top. No x-axis. Width rule: chart width grows sub-linearly (sqrt) so per-column width shrinks as revision count rises; here 6 revisions -> width 15 (~2.5px/column).",
+  "width": 15,
+  "height": 400,
+  "title": {
+    "text": "History Flow - Evolution (first 6 revisions)",
+    "subtitle": "columns = revisions, stack = lines, color = original author (provenance)"
+  },
+  "data": {
+    "values": [
+      {"revision": 0, "author": "Alice", "text": "'''Evolution''' is change in the heritable characteristics of biological populations.", "size": 89},
+      {"revision": 0, "author": "Alice", "text": "Evolutionary processes give rise to diversity at every level of biological organisation.", "size": 87},
+      {"revision": 0, "author": "Alice", "text": "The scientific theory of evolution by natural selection was conceived by Charles Darwin.", "size": 88},
+      {"revision": 0, "author": "Alice", "text": "]]", "size": 2},
+      {"revision": 1, "author": "Alice", "text": "'''Evolution''' is change in the heritable characteristics of biological populations.", "size": 89},
+      {"revision": 1, "author": "Bob", "text": "It is the process that produces heritable variation in populations.", "size": 62},
+      {"revision": 1, "author": "Alice", "text": "Evolutionary processes give rise to diversity at every level of biological organisation.", "size": 87},
+      {"revision": 1, "author": "Alice", "text": "The scientific theory of evolution by natural selection was conceived by Charles Darwin.", "size": 88},
+      {"revision": 1, "author": "Alice", "text": "]]", "size": 2},
+      {"revision": 2, "author": "Alice", "text": "'''Evolution''' is change in the heritable characteristics of biological populations.", "size": 89},
+      {"revision": 2, "author": "Bob", "text": "It is the process that produces heritable variation in populations.", "size": 62},
+      {"revision": 2, "author": "Carol", "text": "Sources of variation include mutation and gene flow.", "size": 50},
+      {"revision": 2, "author": "Alice", "text": "Evolutionary processes give rise to diversity at every level of biological organisation.", "size": 87},
+      {"revision": 2, "author": "Alice", "text": "The scientific theory of evolution by natural selection was conceived by Charles Darwin.", "size": 88},
+      {"revision": 2, "author": "Alice", "text": "]]", "size": 2},
+      {"revision": 3, "author": "Alice", "text": "'''Evolution''' is change in the heritable characteristics of biological populations.", "size": 89},
+      {"revision": 3, "author": "Bob", "text": "It is the process that produces heritable variation in populations.", "size": 62},
+      {"revision": 3, "author": "Carol", "text": "Sources of variation include mutation and gene flow.", "size": 50},
+      {"revision": 3, "author": "Alice", "text": "Evolutionary processes give rise to diversity at every level of biological organisation.", "size": 87},
+      {"revision": 3, "author": "Alice", "text": "The scientific theory of evolution by natural selection was conceived by Charles Darwin.", "size": 88},
+      {"revision": 3, "author": "Alice", "text": "]]", "size": 2},
+      {"revision": 4, "author": "Alice", "text": "'''Evolution''' is change in the heritable characteristics of biological populations.", "size": 89},
+      {"revision": 4, "author": "Bob", "text": "It is the process that produces heritable variation in populations.", "size": 62},
+      {"revision": 4, "author": "Alice", "text": "Evolutionary processes give rise to diversity at every level of biological organisation.", "size": 87},
+      {"revision": 4, "author": "Carol", "text": "Sources of variation include mutation and gene flow.", "size": 50},
+      {"revision": 4, "author": "Alice", "text": "The scientific theory of evolution by natural selection was conceived by Charles Darwin.", "size": 88},
+      {"revision": 4, "author": "Alice", "text": "]]", "size": 2},
+      {"revision": 5, "author": "Alice", "text": "'''Evolution''' is change in the heritable characteristics of biological populations.", "size": 89},
+      {"revision": 5, "author": "Bob", "text": "It is the process that produces heritable variation in populations.", "size": 62},
+      {"revision": 5, "author": "Alice", "text": "Evolutionary processes give rise to diversity at every level of biological organisation.", "size": 87},
+      {"revision": 5, "author": "Carol", "text": "Sources of variation include mutation and gene flow.", "size": 50},
+      {"revision": 5, "author": "Alice", "text": "The scientific theory of evolution by natural selection was conceived by Charles Darwin.", "size": 88},
+      {"revision": 5, "author": "Alice", "text": "]]", "size": 2}
+    ]
+  },
+  "mark": {"type": "bar", "tooltip": true},
+  "encoding": {
+    "x": {
+      "field": "revision",
+      "type": "ordinal",
+      "title": null,
+      "axis": null,
+      "scale": {"padding": 0}
+    },
+    "y": {
+      "field": "size",
+      "type": "quantitative",
+      "title": null,
+      "axis": null,
+      "stack": true,
+      "scale": {"reverse": true}
+    },
+    "color": {
+      "field": "author",
+      "type": "nominal",
+      "scale": {
+        "domain": ["Alice", "Bob", "Carol"],
+        "range": ["#4e79a7", "#f28e2b", "#e15759"]
+      },
+      "legend": {"title": "Author"}
+    },
+    "order": {"field": "text"},
+    "tooltip": [
+      {"field": "revision", "type": "ordinal", "title": "Revision"},
+      {"field": "author", "type": "nominal", "title": "Author"},
+      {"field": "text", "type": "nominal", "title": "Text"}
+    ]
+  },
+  "config": {
+    "view": {"stroke": null}
+  }
+}

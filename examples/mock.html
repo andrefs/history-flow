@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>History Flow – mock</title>
+  <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+</head>
+<body>
+  <div id="view"></div>
+  <script>
+    // History Flow as a STACKED BAR chart: X = revision (column), stack = lines
+    // in document order, color = author. Bar height is the SUM of its line
+    // lengths, so column height is proportional to content size automatically:
+    // insertions grow the column, deletions shrink it. (No explicit y/height.)
+    const numRevisions = 30;
+    // Column width DECREASES as revision count grows: chart width grows
+    // sub-linearly (sqrt) so per-column width shrinks toward a few px with a
+    // dense history, instead of the chart stretching linearly.
+    const maxCol = 5;            // nominal column width at low revision count (px)
+    const width = Math.max(120, Math.round(maxCol * Math.sqrt(numRevisions) + numRevisions * 0.4));
+    const origins = [ // [revAdded, author, text] -- provenance preserved
+      [0, "Alice", "core line one"],
+      [0, "Alice", "core line two"],
+      [0, "Alice", "core line three"],
+      [10, "Bob", "bob block A"],
+      [10, "Bob", "bob block B"],
+      [20, "Carol", "carol note"]
+    ];
+    const values = [];
+    for (let r = 0; r < numRevisions; r++) {
+      origins.forEach(([added, a, t]) => {
+        if (added <= r) {
+          values.push({"revision": r, "author": a, "text": t, "size": t.length});
+        }
+      });
+    }
+    const spec = {
+      "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+      "description": "History Flow: stacked bar. X=revision, stack=lines in order, color=author. Column height proportional to content size.",
+      "width": width,
+      "height": 220,
+      "title": {
+        "text": "History Flow – mock (column height \u221d content size)",
+        "subtitle": "Bob block added rev 10, Carol rev 20, Bob deleted rev 25 (column shrinks)"
+      },
+      "data": {"values": values},
+      "mark": {"type": "bar", "tooltip": true},
+      "encoding": {
+        "x": {"field": "revision", "type": "ordinal", "title": null, "axis": null,
+              "scale": {"padding": 0}},
+        "y": {"field": "size", "type": "quantitative", "title": null, "axis": null,
+              "stack": true, "scale": {"reverse": true}},
+        "color": {"field": "author", "type": "nominal",
+                  "scale": {"domain": ["Alice","Bob","Carol"],
+                            "range": ["#4e79a7","#f28e2b","#e15759"]},
+                  "legend": {"title": "Author"}},
+        "order": {"field": "text"},
+        "tooltip": [
+          {"field":"revision","title":"Revision"},
+          {"field":"author","title":"Author"},
+          {"field":"text","title":"Text"}
+        ]
+      },
+      "config": {
+        "view": {"stroke": null}
+      }
+    };
+    vegaEmbed('#view', spec, {theme: 'dark'});
+  </script>
+</body>
+</html>
