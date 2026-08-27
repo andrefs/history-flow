@@ -8,6 +8,6 @@
 //! - visualize: emit Vega-Lite JSON specs
 
 pub mod attribution;
+pub mod config;
 pub mod import;
 pub mod visualize;
-
