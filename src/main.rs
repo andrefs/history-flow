@@ -128,9 +128,33 @@ fn main() {
     let cli = Cli::parse();
     match cli.command {
         Commands::Probe(args) => {
-            let cfg = config_from_flags(args.pipeline);
-            println!("probe: not implemented yet");
-            println!("{cfg:#?}");
+            let cfg = config_from_flags(args.pipeline, args.target);
+            match history_flow::import::probe(&cfg) {
+                Ok(p) if args.json => println!(
+                    "{}",
+                    serde_json::to_string_pretty(&p).expect("probe must serialize")
+                ),
+                Ok(p) => {
+                    println!("source:      {:?}", p.source);
+                    println!("revisions:   {}", p.revision_count);
+                    println!(
+                        "newest:      {}",
+                        p.newest_revision
+                            .map(|d| d.to_rfc3339())
+                            .unwrap_or_default()
+                    );
+                    println!(
+                        "oldest:      {}",
+                        p.oldest_revision
+                            .map(|d| d.to_rfc3339())
+                            .unwrap_or_default()
+                    );
+                }
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    std::process::exit(1);
+                }
+            }
         }
 
         Commands::Json(args) => {
@@ -169,11 +193,17 @@ fn main() {
     }
 }
 
-fn config_from_flags(f: PipelineFlags) -> Config {
+fn config_from_flags(f: PipelineFlags, target: Option<String>) -> Config {
     let mut c = Config::default();
     c.import.source = f.source.or(c.import.source);
     c.import.page = f.page.or(c.import.page);
     c.import.url = f.url.or(c.import.url);
+
+    // Positional target acts as implicit --url if nothing else specified
+    if c.import.url.is_none() && c.import.source.is_none() && c.import.page.is_none() {
+        c.import.url = target;
+    }
+
     c.import.mode = f.mode.unwrap_or(c.import.mode);
     c.import.last = f.last.unwrap_or(c.import.last);
     c.import.nth = f.nth.unwrap_or(c.import.nth);
@@ -203,7 +233,7 @@ mod tests {
         let Commands::Probe(args) = cli.command else {
             panic!("expected probe command");
         };
-        let cfg = config_from_flags(args.pipeline);
+        let cfg = config_from_flags(args.pipeline, args.target);
         assert_eq!(cfg.import.mode, ImportMode::Nth);
         assert_eq!(cfg.import.last, 42);
         assert_eq!(cfg.import.nth, 5);
