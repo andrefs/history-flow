@@ -3,8 +3,9 @@
 use serde::{Deserialize, Serialize};
 
 /// Which source backend to use.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
 #[serde(rename_all = "snake_case")]
+#[value(rename_all = "snake_case")]
 pub enum Source {
     /// The Wikipedia Action API.
     Wikipedia,
@@ -13,8 +14,9 @@ pub enum Source {
 }
 
 /// How per-revision line authorship is computed.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default, clap::ValueEnum)]
 #[serde(rename_all = "snake_case")]
+#[value(rename_all = "snake_case")]
 pub enum AttributionMode {
     /// Reverted/re-added text re-links to its original author.
     #[default]
@@ -24,8 +26,9 @@ pub enum AttributionMode {
 }
 
 /// How reintroduced text is matched back to its earlier incarnation.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default, clap::ValueEnum)]
 #[serde(rename_all = "snake_case")]
+#[value(rename_all = "snake_case")]
 pub enum MatchMode {
     /// Match reintroduced lines on exact text equality.
     #[default]
@@ -35,8 +38,9 @@ pub enum MatchMode {
 }
 
 /// How revisions are selected (`all` / `last=N` / `nth=N`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default, clap::ValueEnum)]
 #[serde(rename_all = "snake_case")]
+#[value(rename_all = "snake_case")]
 pub enum ImportMode {
     /// Import every revision.
     #[default]
