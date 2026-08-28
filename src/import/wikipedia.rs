@@ -3,6 +3,7 @@
 use super::{ImportError, SourceProbe};
 
 use crate::config::Source;
+use crate::import::Revision;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
@@ -76,6 +77,114 @@ pub fn probe(title: &str) -> Result<SourceProbe, ImportError> {
     })
 }
 
+/// Fetch all revisions with full content for a page.
+/// Returns revisions in chronological order (oldest first).
+pub fn fetch_revisions(title: &str) -> Result<Vec<Revision>, ImportError> {
+    let client = reqwest::blocking::Client::builder()
+        .user_agent("history-flow/0.1 (https://github.com/andrefs/history-flow; Rust)")
+        .build()
+        .map_err(|e| ImportError::Network(e.to_string()))?;
+
+    let mut all_revisions = Vec::new();
+    let mut rvcontinue: Option<String> = None;
+
+    loop {
+        let mut params: Vec<(&str, &str)> = vec![
+            ("action", "query"),
+            ("format", "json"),
+            ("formatversion", "2"),
+            ("prop", "revisions"),
+            ("rvprop", "ids|timestamp|user|content"),
+            ("rvslots", "main"),
+            ("rvlimit", "max"),
+            ("rvdir", "newer"),
+            ("titles", title),
+        ];
+        if let Some(cursor) = &rvcontinue {
+            params.push(("rvcontinue", cursor));
+        }
+
+        let resp: FetchResponse = client
+            .get(API)
+            .query(&params)
+            .send()
+            .map_err(|e| ImportError::Network(e.to_string()))?
+            .error_for_status()
+            .map_err(|e| ImportError::Network(e.to_string()))?
+            .json()
+            .map_err(|e| ImportError::Network(e.to_string()))?;
+
+        let page = resp
+            .query
+            .pages
+            .into_iter()
+            .next()
+            .ok_or_else(|| ImportError::Api("empty pages array".into()))?;
+        if page.missing == Some(true) {
+            return Err(ImportError::MissingPage(page.title));
+        }
+
+        for r in page.revisions.unwrap_or_default() {
+            all_revisions.push(Revision {
+                id: r.revid.to_string(),
+                author: r.user,
+                timestamp: r.timestamp,
+                content: r.slots.main.content,
+            });
+        }
+
+        match resp.continue_.and_then(|c| c.rvcontinue) {
+            Some(cursor) => rvcontinue = Some(cursor),
+            None => break,
+        }
+    }
+
+    Ok(all_revisions)
+}
+
+// Deserialize structs
+#[derive(Deserialize)]
+struct FetchResponse {
+    query: FetchQuery,
+    #[serde(rename = "continue")]
+    continue_: Option<FetchContinue>,
+}
+
+#[derive(Deserialize)]
+struct FetchContinue {
+    rvcontinue: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct FetchQuery {
+    pages: Vec<FetchPage>,
+}
+
+#[derive(Deserialize)]
+struct FetchPage {
+    title: String,
+    missing: Option<bool>,
+    revisions: Option<Vec<FetchRevision>>,
+}
+
+#[derive(Deserialize)]
+struct FetchRevision {
+    revid: u64,
+    timestamp: DateTime<Utc>,
+    user: String,
+    slots: FetchSlots,
+}
+
+#[derive(Deserialize)]
+struct FetchSlots {
+    main: FetchSlotMain,
+}
+
+#[derive(Deserialize)]
+struct FetchSlotMain {
+    content: String,
+}
+
 #[derive(Deserialize)]
 struct ApiResponse {
     #[serde(rename = "continue")]
@@ -100,9 +209,4 @@ struct Page {
     missing: Option<bool>,
 
     revisions: Option<Vec<Revision>>,
-}
-
-#[derive(Deserialize)]
-struct Revision {
-    timestamp: DateTime<Utc>,
 }
