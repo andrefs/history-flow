@@ -158,15 +158,48 @@ fn main() {
         }
 
         Commands::Json(args) => {
-            println!("json: not implemented yet");
-            if let Some(t) = args.target {
-                println!("  target: {}", t);
-            }
-            if let Some(c) = args.config {
-                println!("  config: {}", c);
-            }
-            if let Some(o) = args.output {
-                println!("  -o {}", o);
+            let cfg = config_from_flags(args.pipeline, args.target);
+
+            let revisions = match history_flow::import::import_revisions(&cfg) {
+                Ok(revs) => history_flow::import::select_revisions(
+                    revs,
+                    cfg.import.mode,
+                    cfg.import.last,
+                    cfg.import.nth,
+                ),
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    std::process::exit(1);
+                }
+            };
+
+            // Build the diff chain between consecutive revisions
+            let contents: Vec<Vec<String>> = revisions
+                .iter()
+                .map(|r| r.content.lines().map(|s| s.to_string()).collect())
+                .collect();
+            let diffs: Vec<Vec<history_flow::attribution::DiffOp>> = contents
+                .windows(2)
+                .map(|w| history_flow::attribution::diff::diff_lines(&w[0], &w[1]))
+                .collect();
+
+            let grid = match history_flow::attribution::run_attribution(&revisions, &diffs) {
+                Ok(g) => g,
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    std::process::exit(1);
+                }
+            };
+
+            match args.output {
+                Some(path) => {
+                    let json = serde_json::to_string_pretty(&grid).expect("grid must serialize");
+                    std::fs::write(&path, json).expect("write output file");
+                }
+                None => println!(
+                    "{}",
+                    serde_json::to_string_pretty(&grid).expect("grid must serialize")
+                ),
             }
         }
 

@@ -125,12 +125,14 @@ pub fn fetch_revisions(title: &str) -> Result<Vec<Revision>, ImportError> {
         }
 
         for r in page.revisions.unwrap_or_default() {
-            all_revisions.push(Revision {
-                id: r.revid.to_string(),
-                author: r.user,
-                timestamp: r.timestamp,
-                content: r.slots.main.content,
-            });
+            if let Some(content) = r.slots.main.content {
+                all_revisions.push(Revision {
+                    id: r.revid.to_string(),
+                    author: r.user,
+                    timestamp: r.timestamp,
+                    content,
+                });
+            }
         }
 
         match resp.continue_.and_then(|c| c.rvcontinue) {
@@ -182,7 +184,7 @@ struct FetchSlots {
 
 #[derive(Deserialize)]
 struct FetchSlotMain {
-    content: String,
+    content: Option<String>,
 }
 
 #[derive(Deserialize)]

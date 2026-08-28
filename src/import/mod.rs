@@ -3,7 +3,7 @@
 //! `probe` is an intentionally cheap, metadata-only pass: it counts revisions
 //! and reports the time range, without ever downloading full revision bodies.
 
-use crate::config::{Config, Source};
+use crate::config::{Config, ImportMode, Source};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -92,6 +92,23 @@ pub fn import_revisions(config: &Config) -> Result<Vec<Revision>, ImportError> {
     match source {
         Source::Wikipedia => wikipedia::fetch_revisions(&page),
         Source::Git => Err(ImportError::Unsupported(Source::Git)),
+    }
+}
+
+/// Apply `mode` to a fetched revision list: all, last=N, or every Nth.
+pub fn select_revisions(
+    revisions: Vec<Revision>,
+    mode: ImportMode,
+    last: usize,
+    nth: usize,
+) -> Vec<Revision> {
+    match mode {
+        ImportMode::All => revisions,
+        ImportMode::Last => {
+            let skip = revisions.len().saturating_sub(last);
+            revisions.into_iter().skip(skip).collect()
+        }
+        ImportMode::Nth => revisions.into_iter().step_by(nth).collect(),
     }
 }
 
