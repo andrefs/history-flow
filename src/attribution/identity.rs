@@ -187,7 +187,7 @@ pub fn build_identity_graph(
         for pos in positions {
             rev_authors.push(GridCell {
                 author: lines[pos.line_id].origin_author.clone(),
-                size: lines[pos.line_id].text.len(),
+                size: lines[pos.line_id].text.len().max(1),
             });
         }
         grid.push(rev_authors);
