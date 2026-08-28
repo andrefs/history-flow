@@ -86,6 +86,15 @@ pub fn probe(config: &Config) -> Result<SourceProbe, ImportError> {
     }
 }
 
+/// Fetch all revisions with full content from a source.
+pub fn import_revisions(config: &Config) -> Result<Vec<Revision>, ImportError> {
+    let (source, page) = resolve_target(config)?;
+    match source {
+        Source::Wikipedia => wikipedia::fetch_revisions(&page),
+        Source::Git => Err(ImportError::Unsupported(Source::Git)),
+    }
+}
+
 /// Resolve which source and target page a config names. Applies the
 /// `url` vs `source`+`page` rules from the plan's input-dispatch decision.
 fn resolve_target(config: &Config) -> Result<(Source, String), ImportError> {
