@@ -4,7 +4,9 @@ pub mod diff;
 pub mod identity;
 
 pub use diff::DiffOp;
-pub use identity::{AttributionError, AuthorGrid, Line, LinePosition, build_identity_graph};
+pub use identity::{
+    AttributionError, AuthorGrid, GridCell, Line, LinePosition, build_identity_graph,
+};
 
 /// High-level attribution pipeline: given revisions and diffs, produce AuthorGrid.
 pub fn run_attribution(
