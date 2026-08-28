@@ -9,15 +9,28 @@ use serde::Deserialize;
 
 const API: &str = "https://en.wikipedia.org/w/api.php";
 
+/// Build the blocking HTTP client with our user-agent.
+fn new_client() -> Result<reqwest::blocking::Client, ImportError> {
+    reqwest::blocking::Client::builder()
+        .user_agent("history-flow/0.1 (https://github.com/andrefs/history-flow; Rust)")
+        .build()
+        .map_err(|e| ImportError::Network(e.to_string()))
+}
+
 /// Count revisions and capture the oldest/newest timestamps for a page.
 /// Fetches `ids|timestamp` metadata only (never revision content), paging
 /// via the API's `rvcontinue` cursor until pages are exhausted.
 pub fn probe(title: &str) -> Result<SourceProbe, ImportError> {
     eprintln!("probing Wikipedia page \"{title}\"...");
-    let client = reqwest::blocking::Client::builder()
-        .user_agent("history-flow/0.1 (https://github.com/andrefs/history-flow; Rust)")
-        .build()
-        .map_err(|e| ImportError::Network(e.to_string()))?;
+    probe_with_client(&new_client()?, API, title)
+}
+
+/// Internal probe against an explicit API base URL (test seam).
+fn probe_with_client(
+    client: &reqwest::blocking::Client,
+    api: &str,
+    title: &str,
+) -> Result<SourceProbe, ImportError> {
     let mut count: u64 = 0;
     let mut newest: Option<DateTime<Utc>> = None;
     let mut oldest: Option<DateTime<Utc>> = None;
@@ -38,7 +51,7 @@ pub fn probe(title: &str) -> Result<SourceProbe, ImportError> {
         }
 
         let resp: ApiResponse = client
-            .get(API)
+            .get(api)
             .query(&params)
             .send()
             .map_err(|e| ImportError::Network(e.to_string()))?
@@ -83,11 +96,15 @@ pub fn probe(title: &str) -> Result<SourceProbe, ImportError> {
 /// Returns revisions in chronological order (oldest first).
 pub fn fetch_revisions(title: &str) -> Result<Vec<Revision>, ImportError> {
     eprintln!("fetching full revision content for \"{title}\"...");
-    let client = reqwest::blocking::Client::builder()
-        .user_agent("history-flow/0.1 (https://github.com/andrefs/history-flow; Rust)")
-        .build()
-        .map_err(|e| ImportError::Network(e.to_string()))?;
+    fetch_with_client(&new_client()?, API, title)
+}
 
+/// Internal fetch against an explicit API base URL (test seam).
+fn fetch_with_client(
+    client: &reqwest::blocking::Client,
+    api: &str,
+    title: &str,
+) -> Result<Vec<Revision>, ImportError> {
     let mut all_revisions = Vec::new();
     let mut rvcontinue: Option<String> = None;
 
@@ -108,7 +125,7 @@ pub fn fetch_revisions(title: &str) -> Result<Vec<Revision>, ImportError> {
         }
 
         let resp: FetchResponse = client
-            .get(API)
+            .get(api)
             .query(&params)
             .send()
             .map_err(|e| ImportError::Network(e.to_string()))?
