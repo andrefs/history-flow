@@ -203,10 +203,15 @@ struct Query {
 }
 
 #[derive(Deserialize)]
+struct ProbeRevision {
+    timestamp: DateTime<Utc>,
+}
+
+#[derive(Deserialize)]
 struct Page {
     title: String,
 
     missing: Option<bool>,
 
-    revisions: Option<Vec<Revision>>,
+    revisions: Option<Vec<ProbeRevision>>,
 }
