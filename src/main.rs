@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use history_flow::config::{AttributionMode, Config, ImportMode, MatchMode, Source};
 
 #[derive(Parser)]
@@ -16,10 +16,13 @@ struct Cli {
 enum Commands {
     /// Probe a source for revision count
     Probe(ProbeArgs),
+
     /// Produce only the Vega-Lite JSON spec
     Json(JsonArgs),
-    /// Render the Vega-Lite chart (HTML or --json-only)
+
+    /// Render the Vega-Lite chart (default HTML, or --format json|svg|png)
     Render(RenderArgs),
+
     /// Start the web server
     Serve(ServeArgs),
 }
@@ -58,6 +61,13 @@ struct JsonArgs {
     output: Option<String>,
 }
 
+#[derive(Clone, Copy, ValueEnum)]
+enum RenderFormat {
+    Json,
+    Svg,
+    Png,
+}
+
 #[derive(Parser)]
 struct RenderArgs {
     #[command(flatten)]
@@ -69,9 +79,9 @@ struct RenderArgs {
     #[arg(long, value_name = "PATH")]
     config: Option<String>,
 
-    /// Print only the Vega-Lite spec JSON (no HTML)
-    #[arg(long)]
-    json_only: bool,
+    /// Output format: json (Vega-Lite spec), svg, png; default is HTML
+    #[arg(long, value_enum)]
+    format: Option<RenderFormat>,
 
     /// Output file
     #[arg(short, long, value_name = "FILE")]
@@ -159,38 +169,13 @@ fn main() {
 
         Commands::Json(args) => {
             let cfg = config_from_flags(args.pipeline, args.target);
-
-            let revisions = match history_flow::import::import_revisions(&cfg) {
-                Ok(revs) => history_flow::import::select_revisions(
-                    revs,
-                    cfg.import.mode,
-                    cfg.import.last,
-                    cfg.import.nth,
-                ),
-                Err(e) => {
-                    eprintln!("error: {e}");
-                    std::process::exit(1);
-                }
-            };
-
-            // Build the diff chain between consecutive revisions
-            let contents: Vec<Vec<String>> = revisions
-                .iter()
-                .map(|r| r.content.lines().map(|s| s.to_string()).collect())
-                .collect();
-            let diffs: Vec<Vec<history_flow::attribution::DiffOp>> = contents
-                .windows(2)
-                .map(|w| history_flow::attribution::diff::diff_lines(&w[0], &w[1]))
-                .collect();
-
-            let grid = match history_flow::attribution::run_attribution(&revisions, &diffs) {
+            let grid = match run_pipeline(&cfg) {
                 Ok(g) => g,
                 Err(e) => {
                     eprintln!("error: {e}");
                     std::process::exit(1);
                 }
             };
-
             match args.output {
                 Some(path) => {
                     let json = serde_json::to_string_pretty(&grid).expect("grid must serialize");
@@ -204,18 +189,39 @@ fn main() {
         }
 
         Commands::Render(args) => {
-            println!("render: not implemented yet");
-            if let Some(t) = args.target {
-                println!("  target: {}", t);
-            }
-            if let Some(c) = args.config {
-                println!("  config: {}", c);
-            }
-            if args.json_only {
-                println!("  --json-only");
-            }
-            if let Some(o) = args.output {
-                println!("  -o {}", o);
+            let cfg = config_from_flags(args.pipeline, args.target);
+            let grid = match run_pipeline(&cfg) {
+                Ok(g) => g,
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    std::process::exit(1);
+                }
+            };
+            let spec = history_flow::visualize::build_spec(&grid);
+
+            match args.format {
+                None => {
+                    let html = history_flow::visualize::html_page(&spec);
+                    match args.output {
+                        Some(path) => std::fs::write(&path, html).expect("write output file"),
+                        None => println!("{html}"),
+                    }
+                }
+                Some(RenderFormat::Json) => {
+                    let out = serde_json::to_string_pretty(&spec).expect("spec must serialize");
+                    match args.output {
+                        Some(path) => std::fs::write(&path, out).expect("write output file"),
+                        None => println!("{out}"),
+                    }
+                }
+                Some(RenderFormat::Svg) => {
+                    eprintln!("error: --format svg is not implemented yet");
+                    std::process::exit(1);
+                }
+                Some(RenderFormat::Png) => {
+                    eprintln!("error: --format png is not implemented yet");
+                    std::process::exit(1);
+                }
             }
         }
 
@@ -244,6 +250,26 @@ fn config_from_flags(f: PipelineFlags, target: Option<String>) -> Config {
     c.attribution.match_mode = f.match_mode.unwrap_or(c.attribution.match_mode);
     c.attribution.fuzzy_thresh = f.fuzzy_thresh.unwrap_or(c.attribution.fuzzy_thresh);
     c
+}
+
+/// Run import -> select -> diff -> attribution, yielding an AuthorGrid.
+fn run_pipeline(cfg: &Config) -> Result<history_flow::attribution::AuthorGrid, String> {
+    let revisions = history_flow::import::import_revisions(cfg).map_err(|e| e.to_string())?;
+    let revisions = history_flow::import::select_revisions(
+        revisions,
+        cfg.import.mode,
+        cfg.import.last,
+        cfg.import.nth,
+    );
+    let contents: Vec<Vec<String>> = revisions
+        .iter()
+        .map(|r| r.content.lines().map(|s| s.to_string()).collect())
+        .collect();
+    let diffs: Vec<Vec<history_flow::attribution::DiffOp>> = contents
+        .windows(2)
+        .map(|w| history_flow::attribution::diff::diff_lines(&w[0], &w[1]))
+        .collect();
+    history_flow::attribution::run_attribution(&revisions, &diffs).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
