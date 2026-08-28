@@ -67,18 +67,27 @@ pub struct ImportConfig {
     /// Backend to use; `None` means "user has not chosen" (no implicit default).
     #[serde(default)]
     pub source: Option<Source>,
+
     /// Target document: Wikipedia title or path to one tracked git file.
     #[serde(default)]
     pub page: Option<String>,
+
+    /// Git repository: `owner/repo` (remote) or a local path; file lives in `page`.
+    #[serde(default)]
+    pub repo: Option<String>,
+
     /// Alternative to `source` + `page`: a Wikipedia or GitHub URL to classify.
     #[serde(default)]
     pub url: Option<String>,
+
     /// How to select revisions (`all` / `last=N` / `nth=N`).
     #[serde(default)]
     pub mode: ImportMode,
+
     /// N when `mode = "last"`.
     #[serde(default = "default_last")]
     pub last: usize,
+
     /// N when `mode = "nth"`.
     #[serde(default = "default_nth")]
     pub nth: usize,
@@ -89,6 +98,7 @@ impl Default for ImportConfig {
         Self {
             source: None,
             page: None,
+            repo: None,
             url: None,
             mode: ImportMode::All,
             last: default_last(),

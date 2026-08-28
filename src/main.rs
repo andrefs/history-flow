@@ -118,6 +118,10 @@ struct PipelineFlags {
     #[arg(long)]
     page: Option<String>,
 
+    /// Git repo: owner/repo (remote) or local path. For --source git.
+    #[arg(long)]
+    repo: Option<String>,
+
     /// Revision selection: all | last | nth.
     #[arg(long)]
     mode: Option<ImportMode>,
@@ -265,6 +269,7 @@ fn config_from_flags(f: PipelineFlags, target: Option<String>) -> Config {
     let mut c = Config::default();
     c.import.source = f.source.or(c.import.source);
     c.import.page = f.page.or(c.import.page);
+    c.import.repo = f.repo.or(c.import.repo);
     c.import.url = f.url.or(c.import.url);
 
     // Positional target acts as implicit --url if nothing else specified
