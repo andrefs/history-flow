@@ -282,23 +282,55 @@ fn config_from_flags(f: PipelineFlags, target: Option<String>) -> Config {
 }
 
 /// Run import -> select -> diff -> attribution, yielding an AuthorGrid.
+/// Progress and per-stage timings are logged to stderr so long-running steps
+/// (network import, diffing, attribution) report what they are doing.
 fn run_pipeline(cfg: &Config) -> Result<history_flow::attribution::AuthorGrid, String> {
+    let t0 = std::time::Instant::now();
+
+    eprintln!("importing revisions...");
     let revisions = history_flow::import::import_revisions(cfg).map_err(|e| e.to_string())?;
+    eprintln!(
+        "imported {} revisions in {:.1}s",
+        revisions.len(),
+        t0.elapsed().as_secs_f64()
+    );
+
+    eprintln!(
+        "selecting revisions: mode={:?} last={} nth={}",
+        cfg.import.mode, cfg.import.last, cfg.import.nth
+    );
     let revisions = history_flow::import::select_revisions(
         revisions,
         cfg.import.mode,
         cfg.import.last,
         cfg.import.nth,
     );
+    eprintln!("selected {} revisions", revisions.len());
+
     let contents: Vec<Vec<String>> = revisions
         .iter()
         .map(|r| r.content.lines().map(|s| s.to_string()).collect())
         .collect();
-    let diffs: Vec<Vec<history_flow::attribution::DiffOp>> = contents
-        .windows(2)
-        .map(|w| history_flow::attribution::diff::diff_lines(&w[0], &w[1]))
-        .collect();
-    history_flow::attribution::run_attribution(&revisions, &diffs).map_err(|e| e.to_string())
+
+    let t1 = std::time::Instant::now();
+    let pairs = contents.windows(2).count();
+    eprintln!("diffing {pairs} revision pairs...");
+    let mut diffs = Vec::with_capacity(pairs);
+    for (i, w) in contents.windows(2).enumerate() {
+        diffs.push(history_flow::attribution::diff::diff_lines(&w[0], &w[1]));
+        eprintln!("  diffed pair {}/{}", i + 1, pairs);
+    }
+    eprintln!(
+        "diffed {pairs} revision pairs in {:.1}s",
+        t1.elapsed().as_secs_f64()
+    );
+
+    let t2 = std::time::Instant::now();
+    eprintln!("computing authorship attribution...");
+    let grid = history_flow::attribution::run_attribution(&revisions, &diffs)
+        .map_err(|e| e.to_string())?;
+    eprintln!("attribution done in {:.1}s", t2.elapsed().as_secs_f64());
+    Ok(grid)
 }
 
 #[cfg(test)]

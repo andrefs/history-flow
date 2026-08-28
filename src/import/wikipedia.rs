@@ -13,6 +13,7 @@ const API: &str = "https://en.wikipedia.org/w/api.php";
 /// Fetches `ids|timestamp` metadata only (never revision content), paging
 /// via the API's `rvcontinue` cursor until pages are exhausted.
 pub fn probe(title: &str) -> Result<SourceProbe, ImportError> {
+    eprintln!("probing Wikipedia page \"{title}\"...");
     let client = reqwest::blocking::Client::builder()
         .user_agent("history-flow/0.1 (https://github.com/andrefs/history-flow; Rust)")
         .build()
@@ -67,6 +68,7 @@ pub fn probe(title: &str) -> Result<SourceProbe, ImportError> {
             Some(cursor) => rvcontinue = Some(cursor),
             None => break,
         }
+        eprintln!("  ...{count} revisions so far");
     }
 
     Ok(SourceProbe {
@@ -80,6 +82,7 @@ pub fn probe(title: &str) -> Result<SourceProbe, ImportError> {
 /// Fetch all revisions with full content for a page.
 /// Returns revisions in chronological order (oldest first).
 pub fn fetch_revisions(title: &str) -> Result<Vec<Revision>, ImportError> {
+    eprintln!("fetching full revision content for \"{title}\"...");
     let client = reqwest::blocking::Client::builder()
         .user_agent("history-flow/0.1 (https://github.com/andrefs/history-flow; Rust)")
         .build()
@@ -139,6 +142,7 @@ pub fn fetch_revisions(title: &str) -> Result<Vec<Revision>, ImportError> {
             Some(cursor) => rvcontinue = Some(cursor),
             None => break,
         }
+        eprintln!("  ...{} revisions fetched", all_revisions.len());
     }
 
     Ok(all_revisions)
