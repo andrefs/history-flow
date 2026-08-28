@@ -56,7 +56,7 @@ pub fn build_spec(grid: &AuthorGrid) -> serde_json::Value {
             "order": { "field": "line", "type": "ordinal" },
             "tooltip": [
                 { "field": "author", "type": "nominal" },
-                { "field": "date", "type": "temporal" },
+                { "field": "date", "type": "temporal" , "format": "%Y-%m-%d %H:%M:%S"},
                 { "field": "size", "type": "quantitative" }
             ]
         }
