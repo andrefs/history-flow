@@ -18,7 +18,7 @@ enum Commands {
     Probe(ProbeArgs),
     /// Produce only the Vega-Lite JSON spec
     Json(JsonArgs),
-    /// Render the full pipeline (spec or HTML)
+    /// Render the Vega-Lite chart (HTML or --json-only)
     Render(RenderArgs),
     /// Start the web server
     Serve(ServeArgs),
@@ -69,9 +69,9 @@ struct RenderArgs {
     #[arg(long, value_name = "PATH")]
     config: Option<String>,
 
-    /// Output as self-contained HTML
+    /// Print only the Vega-Lite spec JSON (no HTML)
     #[arg(long)]
-    html: bool,
+    json_only: bool,
 
     /// Output file
     #[arg(short, long, value_name = "FILE")]
@@ -211,8 +211,8 @@ fn main() {
             if let Some(c) = args.config {
                 println!("  config: {}", c);
             }
-            if args.html {
-                println!("  --html");
+            if args.json_only {
+                println!("  --json-only");
             }
             if let Some(o) = args.output {
                 println!("  -o {}", o);
