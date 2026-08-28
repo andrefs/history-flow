@@ -238,3 +238,70 @@ struct Page {
 
     revisions: Option<Vec<ProbeRevision>>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::Source;
+    use chrono::{TimeZone, Utc};
+    use std::io::{BufRead, BufReader, Write};
+    use std::net::TcpListener;
+
+    /// Serve `PAGE1` on the first connection and `PAGE2` (no continue) on the
+    /// second, so the paging loop exhausts after two requests.
+    fn stub_api() -> String {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        std::thread::spawn(move || {
+            for body in [PAGE1, PAGE2] {
+                let (mut stream, _) = listener.accept().unwrap();
+                let mut reader = BufReader::new(stream.try_clone().unwrap());
+                let mut request_line = String::new();
+                let _ = reader.read_line(&mut request_line);
+                while reader.read_line(&mut String::new()).unwrap_or(0) > 2 {}
+                let resp = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                stream.write_all(resp.as_bytes()).unwrap();
+                stream.flush().unwrap();
+            }
+        });
+        format!("http://{}", addr)
+    }
+
+    const PAGE1: &str = r#"{
+  "continue": {"rvcontinue": "20240101000000|1234"},
+  "query": {
+    "pages": [{"title": "Test Page", "revisions": [
+      {"timestamp": "2024-01-01T00:00:00Z"},
+      {"timestamp": "2023-01-01T00:00:00Z"}
+    ]}]
+  }
+}"#;
+
+    const PAGE2: &str = r#"{
+  "query": {
+    "pages": [{"title": "Test Page", "revisions": [
+      {"timestamp": "2022-01-01T00:00:00Z"}
+    ]}]
+  }
+}"#;
+
+    #[test]
+    fn probe_pages_via_rvcontinue() {
+        let base = stub_api();
+        let client = new_client().unwrap();
+        let result = probe_with_client(&client, &base, "Test Page").unwrap();
+        assert_eq!(result.revision_count, 3);
+        assert_eq!(result.source, Source::Wikipedia);
+        assert_eq!(
+            result.newest_revision,
+            Some(Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap())
+        );
+        assert_eq!(
+            result.oldest_revision,
+            Some(Utc.with_ymd_and_hms(2022, 1, 1, 0, 0, 0).unwrap())
+        );
+    }
+}
