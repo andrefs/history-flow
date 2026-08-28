@@ -37,14 +37,24 @@ pub struct LinePosition {
     pub line_index: usize,
 }
 
+/// A single author + size cell in the attribution grid.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GridCell {
+    /// Author credited with this line in this revision.
+    pub author: String,
+
+    /// Line length in characters (segment height in the chart).
+    pub size: usize,
+}
+
 /// Complete author grid: for each revision, the author of each line.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AuthorGrid {
     /// Number of revisions in the grid.
     pub revisions: usize,
 
-    /// 2D grid: grid\[rev_index]\[line_index] = author name.
-    pub grid: Vec<Vec<String>>,
+    /// 2D grid: grid\[rev_index]\[line_index] = GridCell for that line in that revision.
+    pub grid: Vec<Vec<GridCell>>,
 }
 
 /// Error during attribution.
@@ -172,7 +182,10 @@ pub fn build_identity_graph(
     for positions in rev_line_positions.iter() {
         let mut rev_authors = Vec::with_capacity(positions.len());
         for pos in positions {
-            rev_authors.push(lines[pos.line_id].origin_author.clone());
+            rev_authors.push(GridCell {
+                author: lines[pos.line_id].origin_author.clone(),
+                size: lines[pos.line_id].text.len(),
+            });
         }
         grid.push(rev_authors);
     }
@@ -246,11 +259,13 @@ mod tests {
 
         let grid = build_identity_graph(&revisions, &diffs).unwrap();
         // Rev 0 line 0 = Alice
-        assert_eq!(grid.grid[0][0], "Alice");
+        assert_eq!(grid.grid[0][0].author, "Alice");
+        assert_eq!(grid.grid[0][0].size, 3);
         // Rev 1 = empty
         assert_eq!(grid.grid[1].len(), 0);
         // Rev 2 line 0 = Alice (re-linked, not Carol)
-        assert_eq!(grid.grid[2][0], "Alice");
+        assert_eq!(grid.grid[2][0].author, "Alice");
+        assert_eq!(grid.grid[2][0].size, 3);
     }
 
     #[test]
@@ -267,8 +282,10 @@ mod tests {
         ]];
 
         let grid = build_identity_graph(&revisions, &diffs).unwrap();
-        assert_eq!(grid.grid[1][0], "Alice"); // foo stays Alice
-        assert_eq!(grid.grid[1][1], "Bob"); // bar is Bob
+        assert_eq!(grid.grid[1][0].author, "Alice"); // foo stays Alice
+        assert_eq!(grid.grid[1][0].size, 3); // foo length
+        assert_eq!(grid.grid[1][1].author, "Bob"); // bar is Bob
+        assert_eq!(grid.grid[1][1].size, 3); // bar length
     }
 
     #[test]
@@ -293,6 +310,36 @@ mod tests {
         ];
 
         let grid = build_identity_graph(&revisions, &diffs).unwrap();
-        assert_eq!(grid.grid[4][0], "Alice"); // earliest origin wins
+        assert_eq!(grid.grid[4][0].author, "Alice"); // earliest origin wins
+        assert_eq!(grid.grid[4][0].size, 3); // foo length
+    }
+
+    #[test]
+    fn size_tracks_line_length() {
+        let revisions = vec![rev("0", "Alice", "a\nlonger line\nthree words here\n")];
+        let diffs: Vec<Vec<DiffOp>> = vec![];
+
+        let grid = build_identity_graph(&revisions, &diffs).unwrap();
+        assert_eq!(
+            grid.grid[0][0],
+            GridCell {
+                author: "Alice".into(),
+                size: 1
+            }
+        );
+        assert_eq!(
+            grid.grid[0][1],
+            GridCell {
+                author: "Alice".into(),
+                size: 11
+            }
+        );
+        assert_eq!(
+            grid.grid[0][2],
+            GridCell {
+                author: "Alice".into(),
+                size: 16
+            }
+        );
     }
 }
