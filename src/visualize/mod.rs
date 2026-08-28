@@ -3,6 +3,10 @@
 use crate::attribution::AuthorGrid;
 use serde_json::json;
 
+const VEGA: &str = include_str!("../../assets/js/vega.min.js");
+const VEGA_LITE: &str = include_str!("../../assets/js/vega-lite.min.js");
+const VEGA_EMBED: &str = include_str!("../../assets/js/vega-embed.min.js");
+
 /// One tidy data row for the chart.
 #[derive(Debug, Clone)]
 pub struct Datum {
@@ -52,6 +56,31 @@ pub fn build_spec(grid: &AuthorGrid) -> serde_json::Value {
             ]
         }
     })
+}
+
+/// Wrap a Vega-Lite spec in a self-contained HTML page.
+pub fn html_page(spec: &serde_json::Value) -> String {
+    format!(
+        r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>history-flow</title>
+<style>body{{margin:0}}#view{{width:100%}}</style>
+</head>
+<body>
+<div id="view"></div>
+<script>{VEGA}</script>
+<script>{VEGA_LITE}</script>
+<script>{VEGA_EMBED}</script>
+<script>
+const spec = {spec};
+vegaEmbed('#view', spec, {{renderer: 'svg'}}).catch(console.error);
+</script>
+</body>
+</html>"#,
+        spec = serde_json::to_string_pretty(spec).expect("spec must serialize"),
+    )
 }
 
 #[cfg(test)]
@@ -117,5 +146,12 @@ mod tests {
         };
         let big_w = build_spec(&big_grid)["width"].as_f64().unwrap();
         assert!(big_w > small_w);
+    }
+
+    #[test]
+    fn html_page_embeds_spec_and_bundles() {
+        let html = html_page(&build_spec(&sample_grid()));
+        assert!(html.contains("vegaEmbed"));
+        assert!(html.contains("\"revision\""));
     }
 }
