@@ -90,6 +90,15 @@ struct RenderArgs {
 
 #[derive(Parser)]
 struct ServeArgs {
+    #[command(flatten)]
+    pipeline: PipelineFlags,
+
+    #[arg(value_name = "URL_OR_TITLE")]
+    target: Option<String>,
+
+    #[arg(long, value_name = "PATH")]
+    config: Option<String>,
+
     /// Host:port to listen on
     #[arg(default_value = "127.0.0.1:8080", value_name = "HOST:PORT")]
     addr: String,
@@ -226,8 +235,28 @@ fn main() {
         }
 
         Commands::Serve(args) => {
-            println!("serve: not implemented yet");
-            println!("  listening on {}", args.addr);
+            let cfg = config_from_flags(args.pipeline, args.target);
+            let grid = match run_pipeline(&cfg) {
+                Ok(g) => g,
+                Err(e) => {
+                    eprintln!("error: {e}");
+                    std::process::exit(1);
+                }
+            };
+            let spec = history_flow::visualize::build_spec(&grid);
+            let html = history_flow::visualize::html_page(&spec);
+
+            let server = match tiny_http::Server::http(&args.addr) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("error: cannot bind {}: {e}", args.addr);
+                    std::process::exit(1);
+                }
+            };
+            eprintln!("serving on http://{}", args.addr);
+            for request in server.incoming_requests() {
+                let _ = request.respond(tiny_http::Response::from_string(html.clone()));
+            }
         }
     }
 }
