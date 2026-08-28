@@ -162,4 +162,36 @@ mod tests {
             ]
         );
     }
+
+    #[test]
+    fn mixed_ops_insert_and_delete() {
+        let old = vec!["a".into(), "b".into(), "c".into(), "d".into(), "e".into()];
+        let new = vec!["a".into(), "x".into(), "b".into(), "d".into(), "e".into()];
+        let ops = diff_lines(&old, &new);
+        assert_eq!(
+            ops,
+            vec![
+                DiffOp::Equal {
+                    old_index: 0,
+                    new_index: 0
+                },
+                DiffOp::Insert { new_index: 1 },
+                DiffOp::Equal {
+                    old_index: 1,
+                    new_index: 2
+                },
+                DiffOp::Delete { old_index: 2 },
+                DiffOp::Equal {
+                    old_index: 3,
+                    new_index: 3
+                },
+                DiffOp::Equal {
+                    old_index: 4,
+                    new_index: 4
+                },
+            ]
+        );
+        assert_eq!(ops[1].to_string(), "  + 1");
+        assert_eq!(ops[3].to_string(), "  - 2");
+    }
 }
