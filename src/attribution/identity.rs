@@ -53,6 +53,9 @@ pub struct AuthorGrid {
     /// Number of revisions in the grid.
     pub revisions: usize,
 
+    /// RFC3339 timestamp of each revision (index = revision index).
+    pub dates: Vec<String>,
+
     /// 2D grid: grid\[rev_index]\[line_index] = GridCell for that line in that revision.
     pub grid: Vec<Vec<GridCell>>,
 }
@@ -192,6 +195,7 @@ pub fn build_identity_graph(
 
     Ok(AuthorGrid {
         revisions: revisions.len(),
+        dates: revisions.iter().map(|r| r.timestamp.to_rfc3339()).collect(),
         grid,
     })
 }

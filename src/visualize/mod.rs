@@ -13,6 +13,9 @@ pub struct Datum {
     /// Revision index (column).
     pub revision: usize,
 
+    /// Date of this revision (for tooltip).
+    pub date: String,
+
     /// Line index within the revision (stack order).
     pub line: usize,
 
@@ -30,6 +33,7 @@ pub fn build_spec(grid: &AuthorGrid) -> serde_json::Value {
         for (line_idx, cell) in row.iter().enumerate() {
             values.push(json!({
                 "revision": rev,
+                "date": grid.dates[rev].clone(),
                 "line": line_idx,
                 "author": cell.author,
                 "size": cell.size,
@@ -52,6 +56,7 @@ pub fn build_spec(grid: &AuthorGrid) -> serde_json::Value {
             "order": { "field": "line", "type": "ordinal" },
             "tooltip": [
                 { "field": "author", "type": "nominal" },
+                { "field": "date", "type": "temporal" },
                 { "field": "size", "type": "quantitative" }
             ]
         }
@@ -91,6 +96,10 @@ mod tests {
     fn sample_grid() -> AuthorGrid {
         AuthorGrid {
             revisions: 2,
+            dates: vec![
+                "2024-01-01T00:00:00+00:00".to_string(),
+                "2024-01-02T00:00:00+00:00".to_string(),
+            ],
             grid: vec![
                 vec![
                     GridCell {
@@ -142,6 +151,9 @@ mod tests {
         let small_w = small["width"].as_f64().unwrap();
         let big_grid = AuthorGrid {
             revisions: 100,
+            dates: (0..100)
+                .map(|i| format!("2024-01-{:02}T00:00:00+00:00", i + 1))
+                .collect(),
             grid: vec![vec![]; 100],
         };
         let big_w = build_spec(&big_grid)["width"].as_f64().unwrap();
@@ -153,5 +165,14 @@ mod tests {
         let html = html_page(&build_spec(&sample_grid()));
         assert!(html.contains("vegaEmbed"));
         assert!(html.contains("\"revision\""));
+    }
+
+    #[test]
+    fn spec_rows_include_revision_date() {
+        let spec = build_spec(&sample_grid());
+        let rows = spec["data"]["values"].as_array().unwrap();
+        assert!(rows[0]["date"].as_str().unwrap().contains("2024-01-01"));
+        let tooltip = spec["encoding"]["tooltip"].as_array().unwrap();
+        assert!(tooltip.iter().any(|t| t["field"] == "date"));
     }
 }
