@@ -337,4 +337,15 @@ mod tests {
         assert_eq!(revs[1].author, "alice");
         assert_eq!(revs[1].content, "line one\nline two\n");
     }
+
+    const MISSING: &str = r#"{
+  "query": {"pages": [{"title": "Nope", "missing": true}]}
+}"#;
+    #[test]
+    fn fetch_revisions_reports_missing_page() {
+        let base = stub_api(vec![MISSING.to_string()], 1);
+        let client = new_client().unwrap();
+        let err = fetch_with_client(&client, &base, "Nope").unwrap_err();
+        assert!(matches!(err, ImportError::MissingPage(_)));
+    }
 }
