@@ -249,16 +249,17 @@ mod tests {
 
     /// Serve `PAGE1` on the first connection and `PAGE2` (no continue) on the
     /// second, so the paging loop exhausts after two requests.
-    fn stub_api() -> String {
+    fn stub_api(responses: Vec<String>, expect: usize) -> String {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = listener.local_addr().unwrap();
         std::thread::spawn(move || {
-            for body in [PAGE1, PAGE2] {
+            for body in responses.into_iter().take(expect) {
                 let (mut stream, _) = listener.accept().unwrap();
                 let mut reader = BufReader::new(stream.try_clone().unwrap());
                 let mut request_line = String::new();
                 let _ = reader.read_line(&mut request_line);
                 while reader.read_line(&mut String::new()).unwrap_or(0) > 2 {}
+                let body = body.as_str();
                 let resp = format!(
                     "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{body}",
                     body.len()
@@ -288,9 +289,26 @@ mod tests {
   }
 }"#;
 
+    const FETCH_PAGE1: &str = r#"{
+  "continue": {"rvcontinue": "20240101000000|1234"},
+  "query": {"pages": [{"title": "Test Page", "revisions": [
+    {"revid": 100, "timestamp": "2022-01-01T00:00:00Z", "user": "carol",
+     "slots": {"main": {"content": "old line\n"}}},
+    {"revid": 102, "timestamp": "2024-01-01T00:00:00Z", "user": "bob",
+     "slots": {"main": {"content": null}}}
+  ]}]}
+}"#;
+
+    const FETCH_PAGE2: &str = r#"{
+  "query": {"pages": [{"title": "Test Page", "revisions": [
+    {"revid": 103, "timestamp": "2025-01-01T00:00:00Z", "user": "alice",
+     "slots": {"main": {"content": "line one\nline two\n"}}}
+  ]}]}
+}"#;
+
     #[test]
     fn probe_pages_via_rvcontinue() {
-        let base = stub_api();
+        let base = stub_api(vec![PAGE1.to_string(), PAGE2.to_string()], 2);
         let client = new_client().unwrap();
         let result = probe_with_client(&client, &base, "Test Page").unwrap();
         assert_eq!(result.revision_count, 3);
@@ -303,5 +321,20 @@ mod tests {
             result.oldest_revision,
             Some(Utc.with_ymd_and_hms(2022, 1, 1, 0, 0, 0).unwrap())
         );
+    }
+
+    #[test]
+    fn fetch_revisions_orders_oldest_first_and_skips_texthidden() {
+        let base = stub_api(vec![FETCH_PAGE1.to_string(), FETCH_PAGE2.to_string()], 2);
+        let client = new_client().unwrap();
+        let revs = fetch_with_client(&client, &base, "Test Page").unwrap();
+
+        assert_eq!(revs.len(), 2); // 102 (texthidden) skipped
+        assert_eq!(revs[0].id, "100"); // oldest first
+        assert_eq!(revs[0].author, "carol");
+        assert_eq!(revs[0].content, "old line\n");
+        assert_eq!(revs[1].id, "103"); // from the second page
+        assert_eq!(revs[1].author, "alice");
+        assert_eq!(revs[1].content, "line one\nline two\n");
     }
 }
