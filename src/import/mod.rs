@@ -58,6 +58,9 @@ pub enum ImportError {
 
     /// The requested page/file does not exist on the source.
     MissingPage(String),
+
+    /// A git URL named a repository but no tracked file.
+    RepositoryNeedsFile,
 }
 
 impl fmt::Display for ImportError {
@@ -71,6 +74,9 @@ impl fmt::Display for ImportError {
             ImportError::Network(e) => write!(f, "network error: {e}"),
             ImportError::Api(m) => write!(f, "api error: {m}"),
             ImportError::MissingPage(t) => write!(f, "page not found: {t}"),
+            ImportError::RepositoryNeedsFile => {
+                write!(f, "git url needs a file: use owner/repo/blob/<rev>/<path>")
+            }
         }
     }
 }
@@ -134,7 +140,7 @@ fn classify(what: &str) -> Result<(Source, String), ImportError> {
     if let Some(rest) = what.strip_prefix("https://en.wikipedia.org/wiki/") {
         Ok((Source::Wikipedia, clean_title(rest)))
     } else if what.starts_with("https://github.com/") || what.starts_with("github.com/") {
-        Ok((Source::Git, what.to_string()))
+        parse_github_url(what).map(|(_, path)| (Source::Git, path))
     } else {
         // Not a URL: treat as a Wikipedia page title (plan's dispatch rule).
         Ok((Source::Wikipedia, what.to_string()))
@@ -147,6 +153,31 @@ fn clean_title(rest: &str) -> String {
         .next()
         .unwrap_or(rest)
         .replace('_', " ")
+}
+
+/// Parse a GitHub blob URL into (owner/repo, file path).
+/// Accepts `https://github.com/` or `github.com/` prefixes; path must be a
+/// `blob/<rev>/<path...>` (bare repo URLs are an error).
+fn parse_github_url(what: &str) -> Result<(String, String), ImportError> {
+    let rest = what
+        .strip_prefix("https://github.com/")
+        .or_else(|| what.strip_prefix("github.com/"))
+        .ok_or(ImportError::RepositoryNeedsFile)?;
+    let mut parts = rest.split('/');
+    let owner = parts.next();
+    let repo = parts.next();
+    match (owner, repo, parts.next()) {
+        (Some(o), Some(r), Some("blob")) => {
+            let _rev = parts.next();
+            let path = parts.collect::<Vec<_>>().join("/");
+            if !path.is_empty() {
+                Ok((format!("{o}/{r}"), path))
+            } else {
+                Err(ImportError::RepositoryNeedsFile)
+            }
+        }
+        _ => Err(ImportError::RepositoryNeedsFile),
+    }
 }
 
 #[cfg(test)]
@@ -175,15 +206,12 @@ mod tests {
     }
 
     #[test]
-    fn classify_github_flag_is_git() {
+    fn classify_github_blob_is_git() {
         let mut c = Config::default();
-        c.import.url = Some("https://github.com/owner/repo/blob/main/README.md".into());
+        c.import.url = Some("https://github.com/o/r/blob/main/README.md".into());
         assert_eq!(
             resolve_target(&c).unwrap(),
-            (
-                Source::Git,
-                "https://github.com/owner/repo/blob/main/README.md".into()
-            )
+            (Source::Git, "README.md".to_string())
         );
     }
 
@@ -203,6 +231,26 @@ mod tests {
         assert!(matches!(
             resolve_target(&Config::default()),
             Err(ImportError::NoSource)
+        ));
+    }
+
+    #[test]
+    fn classify_github_deep_path() {
+        let mut c = Config::default();
+        c.import.url = Some("https://github.com/o/r/blob/main/src/deep/nested.rs".into());
+        assert_eq!(
+            resolve_target(&c).unwrap(),
+            (Source::Git, "src/deep/nested.rs".to_string())
+        );
+    }
+
+    #[test]
+    fn classify_github_bare_repo_errors() {
+        let mut c = Config::default();
+        c.import.url = Some("https://github.com/owner/repo".into());
+        assert!(matches!(
+            resolve_target(&c),
+            Err(ImportError::RepositoryNeedsFile)
         ));
     }
 }
