@@ -7,6 +7,10 @@ use crate::config::Source;
 use crate::import::Revision;
 use chrono::{DateTime, Utc};
 use std::path::{Path, PathBuf};
+#[cfg(test)]
+use std::sync::atomic::AtomicUsize;
+#[cfg(test)]
+use std::sync::atomic::Ordering;
 
 /// Resolve (owner/repo, file path) from a config: either the explicit `repo` +
 /// `page` pair, or parse them out of a GitHub `url`.
@@ -133,29 +137,31 @@ pub fn fetch_revisions(config: &Config) -> Result<Vec<Revision>, ImportError> {
 }
 
 #[cfg(test)]
+pub(crate) static SEQ: AtomicUsize = AtomicUsize::new(0);
+
+#[cfg(test)]
+pub(crate) fn fresh_repo_dir() -> PathBuf {
+    let n = SEQ.fetch_add(1, Ordering::SeqCst);
+    let dir = std::env::temp_dir().join(format!("hf-git-test-{}-{n}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    run_git(&dir, &["init", "-q", "-b", "main"]).unwrap();
+    run_git(&dir, &["config", "user.email", "t@t"]).unwrap();
+    run_git(&dir, &["config", "user.name", "tester"]).unwrap();
+    dir
+}
+
+#[cfg(test)]
+pub(crate) fn commit_file(dir: &Path, name: &str, body: &str) {
+    std::fs::write(dir.join(name), body).unwrap();
+    run_git(dir, &["add", name]).unwrap();
+    run_git(dir, &["commit", "-q", "-m", "update"]).unwrap();
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::config::Config;
-    use std::sync::atomic::{AtomicUsize, Ordering};
-
-    static SEQ: AtomicUsize = AtomicUsize::new(0);
-
-    fn fresh_repo_dir() -> PathBuf {
-        let n = SEQ.fetch_add(1, Ordering::SeqCst);
-        let dir = std::env::temp_dir().join(format!("hf-git-test-{}-{n}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).unwrap();
-        run_git(&dir, &["init", "-q", "-b", "main"]).unwrap();
-        run_git(&dir, &["config", "user.email", "t@t"]).unwrap();
-        run_git(&dir, &["config", "user.name", "tester"]).unwrap();
-        dir
-    }
-
-    fn commit_file(dir: &Path, name: &str, body: &str) {
-        std::fs::write(dir.join(name), body).unwrap();
-        run_git(dir, &["add", name]).unwrap();
-        run_git(dir, &["commit", "-q", "-m", "update"]).unwrap();
-    }
 
     fn git_config(repo: String, page: String) -> Config {
         let mut c = Config::default();

@@ -189,6 +189,97 @@ pub(crate) fn parse_github_url(what: &str) -> Result<(String, String), ImportErr
 mod tests {
     use super::*;
     use crate::config::Config;
+    use chrono::TimeZone;
+    use std::path::Path;
+
+    use crate::import::git::{commit_file, fresh_repo_dir};
+
+    fn git_cfg(dir: &Path) -> Config {
+        let mut c = Config::default();
+        c.import.source = Some(Source::Git);
+        c.import.repo = Some(dir.to_string_lossy().into_owned());
+        c.import.page = Some("notes.txt".to_string());
+        c
+    }
+
+    fn fake_revisions(n: usize) -> Vec<Revision> {
+        (0..n)
+            .map(|i| Revision {
+                id: i.to_string(),
+                author: "tester".to_string(),
+                timestamp: Utc
+                    .with_ymd_and_hms(2024, 1, 1 + i as u32, 0, 0, 0)
+                    .unwrap(),
+                content: format!("line {i}\n"),
+            })
+            .collect()
+    }
+
+    #[test]
+    fn select_revisions_modes() {
+        let revs = fake_revisions(6);
+
+        assert_eq!(
+            select_revisions(revs.clone(), ImportMode::All, 200, 5).len(),
+            6
+        );
+
+        let last = select_revisions(revs.clone(), ImportMode::Last, 2, 5);
+        let last_ids: Vec<&str> = last.iter().map(|r| r.id.as_str()).collect();
+        assert_eq!(last_ids, ["4", "5"]);
+
+        let nth = select_revisions(revs.clone(), ImportMode::Nth, 200, 3);
+        assert_eq!(nth.len(), 2);
+        assert_eq!(nth[0].id.as_str(), "0");
+        assert_eq!(nth[1].id.as_str(), "3");
+    }
+
+    #[test]
+    fn source_probe_serializes() {
+        let p = SourceProbe {
+            revision_count: 3,
+            oldest_revision: None,
+            newest_revision: None,
+            source: Source::Git,
+        };
+        let json = serde_json::to_string(&p).unwrap();
+        assert!(json.contains("\"revision_count\":3"));
+        assert!(json.contains("\"source\":\"git\""));
+    }
+
+    #[test]
+    fn probe_rejects_no_source() {
+        let c = Config::default();
+        assert!(matches!(probe(&c), Err(ImportError::NoSource)));
+    }
+
+    #[test]
+    fn probe_dispatches_to_git_repo() {
+        let dir = fresh_repo_dir();
+        commit_file(&dir, "notes.txt", "one\n");
+        commit_file(&dir, "notes.txt", "one\ntwo\n");
+
+        let p = probe(&git_cfg(&dir)).unwrap();
+
+        assert_eq!(p.revision_count, 2);
+        assert_eq!(p.source, Source::Git);
+        assert!(p.oldest_revision.unwrap() <= p.newest_revision.unwrap());
+    }
+
+    #[test]
+    fn fetch_dispatches_to_git_repo() {
+        let dir = fresh_repo_dir();
+        commit_file(&dir, "notes.txt", "one\n");
+        commit_file(&dir, "notes.txt", "one\ntwo\n");
+
+        let revs = import_revisions(&git_cfg(&dir)).unwrap();
+
+        assert_eq!(revs.len(), 2);
+        assert_eq!(revs[0].content, "one\n");
+        assert_eq!(revs[1].content, "one\ntwo\n");
+        assert_eq!(revs[0].author, "tester");
+        assert!(revs[0].timestamp <= revs[1].timestamp);
+    }
 
     #[test]
     fn classify_wiki_url() {
