@@ -7,6 +7,7 @@ use crate::config::{Config, ImportMode, Source};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fmt;
+pub mod git;
 pub mod wikipedia;
 
 /// Metadata about a source: how many revisions exist and over what time range.
@@ -61,6 +62,9 @@ pub enum ImportError {
 
     /// A git URL named a repository but no tracked file.
     RepositoryNeedsFile,
+
+    /// The `git` command failed or is not installed.
+    Git(String),
 }
 
 impl fmt::Display for ImportError {
@@ -77,6 +81,7 @@ impl fmt::Display for ImportError {
             ImportError::RepositoryNeedsFile => {
                 write!(f, "git url needs a file: use owner/repo/blob/<rev>/<path>")
             }
+            ImportError::Git(e) => write!(f, "git: {e}"),
         }
     }
 }
@@ -158,7 +163,7 @@ fn clean_title(rest: &str) -> String {
 /// Parse a GitHub blob URL into (owner/repo, file path).
 /// Accepts `https://github.com/` or `github.com/` prefixes; path must be a
 /// `blob/<rev>/<path...>` (bare repo URLs are an error).
-fn parse_github_url(what: &str) -> Result<(String, String), ImportError> {
+pub(crate) fn parse_github_url(what: &str) -> Result<(String, String), ImportError> {
     let rest = what
         .strip_prefix("https://github.com/")
         .or_else(|| what.strip_prefix("github.com/"))
