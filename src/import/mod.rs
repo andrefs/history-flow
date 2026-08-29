@@ -93,7 +93,7 @@ pub fn probe(config: &Config) -> Result<SourceProbe, ImportError> {
     let (source, page) = resolve_target(config)?;
     match source {
         Source::Wikipedia => wikipedia::probe(&page),
-        Source::Git => Err(ImportError::Unsupported(Source::Git)),
+        Source::Git => git::probe(config),
     }
 }
 
@@ -102,7 +102,7 @@ pub fn import_revisions(config: &Config) -> Result<Vec<Revision>, ImportError> {
     let (source, page) = resolve_target(config)?;
     match source {
         Source::Wikipedia => wikipedia::fetch_revisions(&page),
-        Source::Git => Err(ImportError::Unsupported(Source::Git)),
+        Source::Git => git::fetch_revisions(config),
     }
 }
 
