@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use history_flow::config::{AttributionMode, Config, ImportMode, MatchMode, Source};
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 #[command(
     name = "history-flow",
     version,
@@ -12,7 +12,7 @@ struct Cli {
     command: Commands,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 enum Commands {
     /// Probe a source for revision count
     Probe(ProbeArgs),
@@ -27,7 +27,7 @@ enum Commands {
     Serve(ServeArgs),
 }
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 struct ProbeArgs {
     #[command(flatten)]
     pipeline: PipelineFlags,
@@ -45,7 +45,7 @@ struct ProbeArgs {
     json: bool,
 }
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 struct JsonArgs {
     #[command(flatten)]
     pipeline: PipelineFlags,
@@ -61,14 +61,14 @@ struct JsonArgs {
     output: Option<String>,
 }
 
-#[derive(Clone, Copy, ValueEnum)]
+#[derive(Clone, Copy, ValueEnum, Debug)]
 enum RenderFormat {
     Json,
     Svg,
     Png,
 }
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 struct RenderArgs {
     #[command(flatten)]
     pipeline: PipelineFlags,
@@ -88,7 +88,7 @@ struct RenderArgs {
     output: Option<String>,
 }
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 struct ServeArgs {
     #[command(flatten)]
     pipeline: PipelineFlags,
@@ -104,7 +104,7 @@ struct ServeArgs {
     addr: String,
 }
 
-#[derive(clap::Args)]
+#[derive(clap::Args, Debug)]
 struct PipelineFlags {
     /// Wikipedia or GitHub URL identifying the source.
     #[arg(long)]
@@ -341,6 +341,7 @@ fn run_pipeline(cfg: &Config) -> Result<history_flow::attribution::AuthorGrid, S
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::CommandFactory;
 
     #[test]
     fn flags_override_defaults() {
@@ -364,5 +365,20 @@ mod tests {
         assert_eq!(cfg.import.nth, 5);
         assert_eq!(cfg.attribution.mode, AttributionMode::LastEditor);
         assert_eq!(cfg.attribution.match_mode, MatchMode::Exact);
+    }
+
+    #[test]
+    fn help_is_available_for_all_commands() {
+        let top = Cli::try_parse_from(["history-flow", "--help"]).unwrap_err();
+        assert!(matches!(top.kind(), clap::error::ErrorKind::DisplayHelp));
+
+        let probe = Cli::try_parse_from(["history-flow", "probe", "--help"]).unwrap_err();
+        assert!(matches!(probe.kind(), clap::error::ErrorKind::DisplayHelp));
+
+        let help = Cli::command().render_help().to_string();
+        assert!(!help.is_empty());
+        for cmd in ["probe", "json", "render", "serve"] {
+            assert!(help.contains(cmd), "help must mention {cmd}");
+        }
     }
 }
