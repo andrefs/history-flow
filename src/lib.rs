@@ -11,3 +11,4 @@ pub mod attribution;
 pub mod config;
 pub mod import;
 pub mod visualize;
+pub mod web;

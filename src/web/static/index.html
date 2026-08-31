@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>History Flow</title>
+<style>
+body{max-width:900px;margin:2rem auto;font-family:system-ui,sans-serif}
+.input-row{display:flex;gap:0.5rem;margin-bottom:1rem}
+input[type=text]{flex:1;padding:0.5rem;font-size:1rem}
+button{padding:0.5rem 1rem;font-size:1rem}
+.advanced{border:1px solid #ccc;border-radius:4px;padding:1rem;margin:1rem 0}
+.advanced summary{cursor:pointer;font-weight:bold}
+.advanced label{display:block;margin:0.5rem 0}
+.advanced select,.advanced input[type=number]{padding:0.25rem}
+.result{margin-top:2rem}.error{color:red;margin:1rem 0}
+</style>
+</head><body>
+<h1>History Flow</h1>
+<p>Paste a Wikipedia URL, title, or GitHub <code>blob/<rev>/<path></code> URL.</p>
+
+<form id="render-form" class="input-row">
+  <input type="text" name="target" placeholder="https://en.wikipedia.org/wiki/Evolution" required>
+  <button type="submit">Render</button>
+</form>
+
+<button type="button" id="size-up-btn" disabled>Size up</button>
+<span id="size-up-out"></span>
+
+<details class="advanced">
+  <summary>Advanced options</summary>
+  <div>
+    <label>Attribution mode:
+      <select name="attr_mode"><option value="provenance" selected>Provenance</option>
+        <option value="last_editor">Last editor</option></select></label>
+    <label>Import mode:
+      <select name="mode"><option value="all">All</option><option value="last">Last N</option>
+        <option value="nth">Every Nth</option></select></label>
+    <label>Last N: <input type="number" name="last" value="200" min="1"></label>
+    <label>Every Nth: <input type="number" name="nth" value="5" min="1"></label>
+    <label>Match mode:
+      <select name="match_mode"><option value="exact">Exact</option><option value="fuzzy">Fuzzy</option></select></label>
+    <label>Fuzzy threshold: <input type="number" name="fuzzy_thresh" value="0.95" min="0" max="1" step="0.01"></label>
+    <label>Git repo: <input type="text" name="repo" placeholder="owner/repo or /local/path"></label>
+    <label>Git file path: <input type="text" name="page" placeholder="path/to/file"></label>
+  </div>
+</details>
+
+<div class="result" id="result"></div>
+
+<script src="/static/vega-embed.min.js"></script>
+<script>
+  // on submit: fetch /render?params → set result.innerHTML = response → vegaEmbed
+  // size-up: fetch /probe?params&probe=1 → display revision_count/oldest/newest
+  // enable size-up button when target has content
+</script>
+</body></html>
