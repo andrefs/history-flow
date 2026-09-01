@@ -6,7 +6,6 @@
 ///   cargo run --example lib_usage -- --json-only            # Vega-Lite spec only, no HTML wrapper
 ///   cargo run --example lib_usage -- --source git \
 ///       --repo /path/to/repo --page notes.txt              # local git file
-
 use std::env;
 use std::process;
 
@@ -57,11 +56,10 @@ fn main() {
 
     // 5. Attribution
     eprintln!("attributing...");
-    let grid = history_flow::attribution::run_attribution(&revisions, &diffs)
-        .unwrap_or_else(|e| {
-            eprintln!("error: {e}");
-            process::exit(1);
-        });
+    let grid = history_flow::attribution::run_attribution(&revisions, &diffs).unwrap_or_else(|e| {
+        eprintln!("error: {e}");
+        process::exit(1);
+    });
 
     // 6. Visualize
     let spec = history_flow::visualize::build_spec(&grid);
