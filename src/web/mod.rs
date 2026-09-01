@@ -42,7 +42,7 @@ async fn index_page() -> Html<String> {
 async fn render_page(Query(form): Query<WebForm>) -> impl IntoResponse {
     let config = form.into_config();
     match run_pipeline(&config) {
-        Ok(html) => Html(html).into_response(),
+        Ok(spec) => Json(spec).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e).into_response(),
     }
 }
@@ -64,7 +64,7 @@ async fn probe_page(Query(form): Query<WebForm>) -> impl IntoResponse {
     }
 }
 
-fn run_pipeline(config: &crate::config::Config) -> Result<String, String> {
+fn run_pipeline(config: &crate::config::Config) -> Result<serde_json::Value, String> {
     let revisions = crate::import::import_revisions(config).map_err(|e| e.to_string())?;
     let revisions = crate::import::select_revisions(
         revisions,
@@ -83,5 +83,5 @@ fn run_pipeline(config: &crate::config::Config) -> Result<String, String> {
     let grid =
         crate::attribution::run_attribution(&revisions, &diffs).map_err(|e| e.to_string())?;
     let spec = crate::visualize::build_spec(&grid);
-    Ok(crate::visualize::html_page(&spec))
+    Ok(spec)
 }
