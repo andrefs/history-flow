@@ -10,6 +10,7 @@ button{padding:0.5rem 1rem;font-size:1rem}
 .advanced label{display:block;margin:0.5rem 0}
 .advanced select,.advanced input[type=number]{padding:0.25rem}
 .result{margin-top:2rem}.error{color:red;margin:1rem 0}
+#view{width:100%}
 </style>
 </head><body>
 <h1>History Flow</h1>
@@ -46,8 +47,58 @@ button{padding:0.5rem 1rem;font-size:1rem}
 
 <script src="/static/vega-embed.min.js"></script>
 <script>
-  // on submit: fetch /render?params → set result.innerHTML = response → vegaEmbed
-  // size-up: fetch /probe?params&probe=1 → display revision_count/oldest/newest
-  // enable size-up button when target has content
+  const form = document.getElementById('render-form');
+  const result = document.getElementById('result');
+  const sizeBtn = document.getElementById('size-up-btn');
+  const sizeOut = document.getElementById('size-up-out');
+  const targetInput = form.querySelector('input[name="target"]');
+
+  function getFormParams(includeProbe) {
+    const fd = new FormData(form);
+    if (includeProbe) fd.set('probe', '1');
+    return new URLSearchParams(fd).toString();
+  }
+
+  function showError(msg) {
+    result.innerHTML = '<div class="error">Error: ' + msg + '</div>';
+  }
+
+  targetInput.addEventListener('input', () => {
+    sizeBtn.disabled = !targetInput.value.trim();
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    result.innerHTML = '<div style="color:#666">Rendering…</div>';
+    try {
+      const resp = await fetch('/render?' + getFormParams(false));
+      if (!resp.ok) {
+        showError(await resp.text());
+        return;
+      }
+      const spec = await resp.json();
+      result.innerHTML = '<div id="view"></div>';
+      vegaEmbed('#view', spec, { actions: false }).catch(err => showError(err.message));
+    } catch (err) {
+      showError(err.message);
+    }
+  });
+
+  sizeBtn.addEventListener('click', async () => {
+    sizeOut.textContent = 'Probing…';
+    try {
+      const resp = await fetch('/probe?' + getFormParams(true));
+      if (!resp.ok) {
+        sizeOut.textContent = 'Error: ' + await resp.text();
+        return;
+      }
+      const data = await resp.json();
+      sizeOut.textContent = 'Revisions: ' + data.revision_count +
+        ' | Oldest: ' + (data.oldest_revision || 'N/A') +
+        ' | Newest: ' + (data.newest_revision || 'N/A');
+    } catch (err) {
+      sizeOut.textContent = 'Error: ' + err.message;
+    }
+  });
 </script>
 </body></html>
