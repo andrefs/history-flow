@@ -12,7 +12,7 @@ use std::process;
 fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
     let json_only = args.iter().any(|a| a == "--json-only");
-    let positional: Option<String> = args.into_iter().filter(|a| !a.starts_with('-')).next();
+    let positional: Option<String> = args.into_iter().find(|a| !a.starts_with('-'));
 
     let mut config = history_flow::config::Config::default();
     if let Some(target) = positional {
