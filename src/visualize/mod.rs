@@ -90,7 +90,7 @@ pub fn build_spec_with_title(grid: &AuthorGrid, title: Option<&str>) -> serde_js
             "x2": { "field": "x2" },
             "y": { "field": "y", "type": "quantitative", "axis": null, "scale": { "reverse": true } },
             "y2": { "field": "y2" },
-            "color": { "field": "author", "type": "nominal", "sort": { "field": "author_total", "order": "descending" } },
+            "color": { "field": "author", "type": "nominal", "sort": { "field": "author_total", "order": "descending" }, "legend": { "orient": "bottom", "columns": 8 } },
             "order": { "field": "line", "type": "ordinal" },
             "tooltip": [
                 { "field": "author", "type": "nominal" },
@@ -100,7 +100,11 @@ pub fn build_spec_with_title(grid: &AuthorGrid, title: Option<&str>) -> serde_js
         }
     });
     if let Some(t) = title {
-        spec["title"] = serde_json::json!({ "text": t, "anchor": "start" });
+        spec["title"] = serde_json::json!({
+            "text": t,
+            "anchor": "center",
+            "fontSize": 24,
+        });
     }
     spec
 }
@@ -191,7 +195,8 @@ mod tests {
     fn build_spec_with_title_sets_title_field() {
         let spec = build_spec_with_title(&sample_grid(), Some("History of the potato"));
         assert_eq!(spec["title"]["text"], "History of the potato");
-        assert_eq!(spec["title"]["anchor"], "start");
+        assert_eq!(spec["title"]["anchor"], "center");
+        assert_eq!(spec["title"]["fontSize"], 24);
 
         let no_title = build_spec(&sample_grid());
         assert!(no_title["title"].is_null());

@@ -18,7 +18,11 @@ button{padding:0.5rem 1rem;font-size:1rem}
 .tab.active{background:#fff;border-color:#ccc;font-weight:bold;margin-bottom:-1px}
 .tab-pane{display:none}
 .tab-pane.active{display:block}
-.downloads{display:flex;gap:0.5rem;margin-bottom:1rem}
+.downloads{display:flex;gap:0.5rem;margin:1rem 0}
+.spinner-wrap{display:none;justify-content:center;align-items:center;padding:2rem 0}
+.spinner{width:36px;height:36px;border:4px solid #ccc;border-top-color:#333;border-radius:50%;
+  animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head><body>
 <h1>History Flow</h1>
@@ -50,16 +54,19 @@ button{padding:0.5rem 1rem;font-size:1rem}
 </details>
 
 <div class="result" id="result">
+  <div class="spinner-wrap" id="spinner-wrap">
+    <div class="spinner"></div>
+  </div>
   <div class="tabs" id="tabs" style="display:none">
     <button type="button" class="tab active" data-tab="interactive">Interactive</button>
     <button type="button" class="tab" data-tab="svg">SVG</button>
   </div>
+  <div class="tab-pane active" id="pane-interactive"><div id="view"></div></div>
+  <div class="tab-pane" id="pane-svg"></div>
   <div class="downloads" id="downloads" style="display:none">
     <button type="button" id="dl-json">Download JSON</button>
     <button type="button" id="dl-png">Download PNG</button>
   </div>
-  <div class="tab-pane active" id="pane-interactive"><div id="view"></div></div>
-  <div class="tab-pane" id="pane-svg"></div>
 </div>
 
 <script src="/static/vega.min.js"></script>
@@ -127,9 +134,18 @@ button{padding:0.5rem 1rem;font-size:1rem}
   });
 
   document.getElementById('dl-png').addEventListener('click', async () => {
-    if (!view) return;
+    if (!view || !spec) return;
     try {
-      downloadDataUrl('history-flow.png', await view.toImageURL('png', 2));
+      const canonical = JSON.parse(JSON.stringify(spec));
+      delete canonical.params;
+      const host = document.createElement('div');
+      host.style.position = 'absolute';
+      host.style.left = '-9999px';
+      document.body.appendChild(host);
+      const res = await vegaEmbed(host, canonical, { actions: false });
+      const dataUrl = await res.view.toImageURL('png', 2);
+      host.remove();
+      downloadDataUrl('history-flow.png', dataUrl);
     } catch (err) {
       showError(err.message);
     }
@@ -145,15 +161,19 @@ button{padding:0.5rem 1rem;font-size:1rem}
     e.preventDefault();
     const viewHost = document.getElementById('pane-interactive');
     const svgPane = document.getElementById('pane-svg');
-    viewHost.innerHTML = '<div style="color:#666">Rendering…</div>';
+    const spinner = document.getElementById('spinner-wrap');
+    viewHost.innerHTML = '';
     svgPane.innerHTML = '';
+    spinner.style.display = 'flex';
     try {
       const resp = await fetch('/render?' + getFormParams(false));
       if (!resp.ok) {
+        spinner.style.display = 'none';
         showError(await resp.text());
         return;
       }
       spec = await resp.json();
+      spinner.style.display = 'none';
 
       viewHost.innerHTML = '<div id="view"></div>';
       tabBar.style.display = '';
@@ -167,6 +187,7 @@ button{padding:0.5rem 1rem;font-size:1rem}
       view = res.view;
       svgPane.innerHTML = await view.toSVG();
     } catch (err) {
+      document.getElementById('spinner-wrap').style.display = 'none';
       showError(err.message);
     }
   });
