@@ -10,8 +10,6 @@ pub struct WebForm {
     pub nth: Option<usize>,
     pub match_mode: Option<String>,
     pub fuzzy_thresh: Option<f64>,
-    pub repo: Option<String>,
-    pub page: Option<String>,
     pub probe: Option<String>, // "1" for size-up
 }
 
@@ -48,12 +46,6 @@ impl WebForm {
         }
         if let Some(v) = self.fuzzy_thresh {
             c.attribution.fuzzy_thresh = v;
-        }
-        if let Some(v) = self.repo {
-            c.import.repo = Some(v);
-        }
-        if let Some(v) = self.page {
-            c.import.page = Some(v);
         }
         c
     }

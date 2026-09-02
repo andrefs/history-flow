@@ -11,6 +11,14 @@ button{padding:0.5rem 1rem;font-size:1rem}
 .advanced select,.advanced input[type=number]{padding:0.25rem}
 .result{margin-top:2rem}.error{color:red;margin:1rem 0}
 #view{width:100%}
+
+.tabs{display:flex;gap:0.5rem;border-bottom:1px solid #ccc;margin:1rem 0 .75rem}
+.tab{background:none;border:1px solid transparent;border-bottom:none;padding:0.5rem 1rem;
+  cursor:pointer;border-radius:4px 4px 0 0;color:#333}
+.tab.active{background:#fff;border-color:#ccc;font-weight:bold;margin-bottom:-1px}
+.tab-pane{display:none}
+.tab-pane.active{display:block}
+.downloads{display:flex;gap:0.5rem;margin-bottom:1rem}
 </style>
 </head><body>
 <h1>History Flow</h1>
@@ -18,10 +26,10 @@ button{padding:0.5rem 1rem;font-size:1rem}
 
 <form id="render-form" class="input-row">
   <input type="text" name="target" placeholder="https://en.wikipedia.org/wiki/Evolution" required>
-  <button type="submit">Render</button>
+  <button type="submit" id="render-btn" disabled>Render</button>
+  <button type="button" id="size-up-btn" disabled>Size up</button>
 </form>
 
-<button type="button" id="size-up-btn" disabled>Size up</button>
 <span id="size-up-out"></span>
 
 <details class="advanced">
@@ -38,12 +46,21 @@ button{padding:0.5rem 1rem;font-size:1rem}
     <label>Match mode:
       <select name="match_mode"><option value="exact">Exact</option><option value="fuzzy">Fuzzy</option></select></label>
     <label>Fuzzy threshold: <input type="number" name="fuzzy_thresh" value="0.95" min="0" max="1" step="0.01"></label>
-    <label>Git repo: <input type="text" name="repo" placeholder="owner/repo or /local/path"></label>
-    <label>Git file path: <input type="text" name="page" placeholder="path/to/file"></label>
   </div>
 </details>
 
-<div class="result" id="result"></div>
+<div class="result" id="result">
+  <div class="tabs" id="tabs" style="display:none">
+    <button type="button" class="tab active" data-tab="interactive">Interactive</button>
+    <button type="button" class="tab" data-tab="svg">SVG</button>
+  </div>
+  <div class="downloads" id="downloads" style="display:none">
+    <button type="button" id="dl-json">Download JSON</button>
+    <button type="button" id="dl-png">Download PNG</button>
+  </div>
+  <div class="tab-pane active" id="pane-interactive"><div id="view"></div></div>
+  <div class="tab-pane" id="pane-svg"></div>
+</div>
 
 <script src="/static/vega.min.js"></script>
 <script src="/static/vega-lite.min.js"></script>
@@ -51,9 +68,15 @@ button{padding:0.5rem 1rem;font-size:1rem}
 <script>
   const form = document.getElementById('render-form');
   const result = document.getElementById('result');
+  const tabBar = document.getElementById('tabs');
+  const dlBar = document.getElementById('downloads');
+  const renderBtn = document.getElementById('render-btn');
   const sizeBtn = document.getElementById('size-up-btn');
   const sizeOut = document.getElementById('size-up-out');
   const targetInput = form.querySelector('input[name="target"]');
+
+  let view = null;
+  let spec = null;
 
   function getFormParams(includeProbe) {
     const fd = new FormData(form);
@@ -62,25 +85,87 @@ button{padding:0.5rem 1rem;font-size:1rem}
   }
 
   function showError(msg) {
-    result.innerHTML = '<div class="error">Error: ' + msg + '</div>';
+    document.getElementById('pane-interactive').innerHTML =
+      '<div class="error">Error: ' + msg + '</div>';
   }
 
+  function downloadBlob(name, blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function downloadDataUrl(name, dataUrl) {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  // Tab switching (tab bar exists statically in the DOM).
+  tabBar.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tab');
+    if (!btn) return;
+    for (const b of tabBar.querySelectorAll('.tab')) b.classList.toggle('active', b === btn);
+    for (const pane of result.querySelectorAll('.tab-pane')) {
+      pane.classList.toggle('active', pane.id === 'pane-' + btn.dataset.tab);
+    }
+  });
+
+  // Downloads (wired once; guards on view/spec).
+  document.getElementById('dl-json').addEventListener('click', () => {
+    if (!spec) return;
+    downloadBlob('history-flow.json',
+      new Blob([JSON.stringify(spec, null, 2)], { type: 'application/json' }));
+  });
+
+  document.getElementById('dl-png').addEventListener('click', async () => {
+    if (!view) return;
+    try {
+      downloadDataUrl('history-flow.png', await view.toImageURL('png', 2));
+    } catch (err) {
+      showError(err.message);
+    }
+  });
+
   targetInput.addEventListener('input', () => {
-    sizeBtn.disabled = !targetInput.value.trim();
+    const empty = !targetInput.value.trim();
+    renderBtn.disabled = empty;
+    sizeBtn.disabled = empty;
   });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    result.innerHTML = '<div style="color:#666">Rendering…</div>';
+    const viewHost = document.getElementById('pane-interactive');
+    const svgPane = document.getElementById('pane-svg');
+    viewHost.innerHTML = '<div style="color:#666">Rendering…</div>';
+    svgPane.innerHTML = '';
     try {
       const resp = await fetch('/render?' + getFormParams(false));
       if (!resp.ok) {
         showError(await resp.text());
         return;
       }
-      const spec = await resp.json();
-      result.innerHTML = '<div id="view"></div>';
-      vegaEmbed('#view', spec, { actions: false }).catch(err => showError(err.message));
+      spec = await resp.json();
+
+      viewHost.innerHTML = '<div id="view"></div>';
+      tabBar.style.display = '';
+      dlBar.style.display = '';
+      for (const b of tabBar.querySelectorAll('.tab'))
+        b.classList.toggle('active', b.dataset.tab === 'interactive');
+      for (const pane of result.querySelectorAll('.tab-pane'))
+        pane.classList.toggle('active', pane.id === 'pane-interactive');
+
+      const res = await vegaEmbed('#view', spec, { actions: false });
+      view = res.view;
+      svgPane.innerHTML = await view.toSVG();
     } catch (err) {
       showError(err.message);
     }

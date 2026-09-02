@@ -28,6 +28,12 @@ pub struct Datum {
 
 /// Build the Vega-Lite stacked-bar spec from an AuthorGrid.
 pub fn build_spec(grid: &AuthorGrid) -> serde_json::Value {
+    build_spec_with_title(grid, None)
+}
+
+/// Build the spec, optionally labeling the chart with `title` (shown in the
+/// chart and therefore in SVG/PNG exports).
+pub fn build_spec_with_title(grid: &AuthorGrid, title: Option<&str>) -> serde_json::Value {
     let mut values = Vec::new();
     let mut author_total: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
     for row in grid.grid.iter() {
@@ -66,7 +72,7 @@ pub fn build_spec(grid: &AuthorGrid) -> serde_json::Value {
     let cols = grid.revisions;
     let width = (cols as f64).max(1.0);
 
-    json!({
+    let mut spec = json!({
         "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
         "width": width,
         "height": 600,
@@ -92,7 +98,11 @@ pub fn build_spec(grid: &AuthorGrid) -> serde_json::Value {
                 { "field": "size", "type": "quantitative" }
             ]
         }
-    })
+    });
+    if let Some(t) = title {
+        spec["title"] = serde_json::json!({ "text": t, "anchor": "start" });
+    }
+    spec
 }
 
 /// Wrap a Vega-Lite spec in a self-contained HTML page.
@@ -175,6 +185,16 @@ mod tests {
         assert_eq!(spec["encoding"]["color"]["field"], "author");
         assert_eq!(spec["encoding"]["order"]["field"], "line");
         assert_eq!(spec["mark"], "rect");
+    }
+
+    #[test]
+    fn build_spec_with_title_sets_title_field() {
+        let spec = build_spec_with_title(&sample_grid(), Some("History of the potato"));
+        assert_eq!(spec["title"]["text"], "History of the potato");
+        assert_eq!(spec["title"]["anchor"], "start");
+
+        let no_title = build_spec(&sample_grid());
+        assert!(no_title["title"].is_null());
     }
 
     #[test]
