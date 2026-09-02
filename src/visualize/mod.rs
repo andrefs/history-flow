@@ -74,6 +74,7 @@ pub fn build_spec_with_title(grid: &AuthorGrid, title: Option<&str>) -> serde_js
 
     let mut spec = json!({
         "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "background": "black",
         "width": width,
         "height": 600,
         "params": [
@@ -90,7 +91,7 @@ pub fn build_spec_with_title(grid: &AuthorGrid, title: Option<&str>) -> serde_js
             "x2": { "field": "x2" },
             "y": { "field": "y", "type": "quantitative", "axis": null, "scale": { "reverse": true } },
             "y2": { "field": "y2" },
-            "color": { "field": "author", "type": "nominal", "sort": { "field": "author_total", "order": "descending" }, "legend": { "orient": "bottom", "columns": 8 } },
+            "color": { "field": "author", "type": "nominal", "sort": { "field": "author_total", "order": "descending" }, "legend": { "orient": "bottom", "columns": 8, "labelColor": "white", "titleColor": "white" } },
             "order": { "field": "line", "type": "ordinal" },
             "tooltip": [
                 { "field": "author", "type": "nominal" },
@@ -104,6 +105,7 @@ pub fn build_spec_with_title(grid: &AuthorGrid, title: Option<&str>) -> serde_js
             "text": t,
             "anchor": "center",
             "fontSize": 24,
+            "color": "white"
         });
     }
     spec
