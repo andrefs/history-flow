@@ -17,7 +17,7 @@ mod config_form;
 /// Start the History Flow web server on `addr`.
 /// Serves the interactive single-input page at `/` and runs the pipeline on `/render`.
 pub async fn run_server(addr: SocketAddr) -> Result<(), Box<dyn std::error::Error>> {
-    let assets_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("assets");
+    let assets_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/js");
     let app = Router::new()
         .route("/render", get(render_page))
         .route("/probe", get(probe_page))
@@ -41,7 +41,7 @@ async fn index_page() -> Html<String> {
 
 async fn render_page(Query(form): Query<WebForm>) -> impl IntoResponse {
     let config = form.into_config();
-    match run_pipeline(&config) {
+    match run_pipeline_async(config).await {
         Ok(spec) => Json(spec).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e).into_response(),
     }
@@ -52,14 +52,15 @@ async fn probe_page(Query(form): Query<WebForm>) -> impl IntoResponse {
         return (StatusCode::BAD_REQUEST, "probe=1 required").into_response();
     }
     let config = form.into_config();
-    match crate::import::probe(&config) {
-        Ok(p) => Json(serde_json::json!({
+    match tokio::task::spawn_blocking(move || crate::import::probe(&config)).await {
+        Ok(Ok(p)) => Json(serde_json::json!({
             "revision_count": p.revision_count,
             "oldest_revision": p.oldest_revision,
             "newest_revision": p.newest_revision,
             "source": p.source,
         }))
         .into_response(),
+        Ok(Err(e)) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
     }
 }
@@ -84,4 +85,10 @@ fn run_pipeline(config: &crate::config::Config) -> Result<serde_json::Value, Str
         crate::attribution::run_attribution(&revisions, &diffs).map_err(|e| e.to_string())?;
     let spec = crate::visualize::build_spec(&grid);
     Ok(spec)
+}
+
+async fn run_pipeline_async(config: crate::config::Config) -> Result<serde_json::Value, String> {
+    tokio::task::spawn_blocking(move || run_pipeline(&config))
+        .await
+        .map_err(|e| e.to_string())?
 }

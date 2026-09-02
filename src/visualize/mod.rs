@@ -29,30 +29,62 @@ pub struct Datum {
 /// Build the Vega-Lite stacked-bar spec from an AuthorGrid.
 pub fn build_spec(grid: &AuthorGrid) -> serde_json::Value {
     let mut values = Vec::new();
+    let mut author_total: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    for row in grid.grid.iter() {
+        for cell in row.iter() {
+            *author_total.entry(cell.author.as_str()).or_insert(0) += cell.size;
+        }
+    }
+    // Each revision becomes a horizontal band [x, x2). Within a band, lines are
+    // stacked bottom-up (offset y..y2). Using a quantitative x band (instead of
+    // an ordinal scale) is what makes wheel-zoom + pan via `bind: "scales"`
+    // work reliably.
     for (rev, row) in grid.grid.iter().enumerate() {
+        let x: f64 = rev as f64;
+        let x2: f64 = x + 0.9;
+        let mut offset: f64 = 0.0;
         for (line_idx, cell) in row.iter().enumerate() {
+            let size = cell.size as f64;
+            let y = offset;
+            let y2 = offset + size;
+            offset = y2;
             values.push(json!({
                 "revision": rev,
                 "date": grid.dates[rev].clone(),
                 "line": line_idx,
                 "author": cell.author,
                 "size": cell.size,
+                "author_total": author_total[cell.author.as_str()],
+                "x": x,
+                "x2": x2,
+                "y": y,
+                "y2": y2,
             }));
         }
     }
-    // Width: sub-linear rule so per-column width narrows as revisions grow.
+    // Width: one pixel per revision column (each bar is exactly 1px wide).
     let cols = grid.revisions;
-    let width = (120.0_f64).max((cols as f64) * (cols as f64).sqrt() + (cols as f64) * 0.4);
+    let width = (cols as f64).max(1.0);
 
     json!({
         "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
         "width": width,
+        "height": 600,
+        "params": [
+            {
+                "name": "grid",
+                "select": { "type": "interval", "encodings": ["x"], "zoom": "wheel" },
+                "bind": "scales"
+            }
+        ],
         "data": { "values": values },
-        "mark": "bar",
+        "mark": "rect",
         "encoding": {
-            "x": { "field": "revision", "type": "ordinal", "scale": { "padding": 0 }, "axis": null },
-            "y": { "field": "size", "type": "quantitative", "stack": true, "scale": { "reverse": true }, "axis": null },
-            "color": { "field": "author", "type": "nominal" },
+            "x": { "field": "x", "type": "quantitative", "axis": null },
+            "x2": { "field": "x2" },
+            "y": { "field": "y", "type": "quantitative", "axis": null, "scale": { "reverse": true } },
+            "y2": { "field": "y2" },
+            "color": { "field": "author", "type": "nominal", "sort": { "field": "author_total", "order": "descending" } },
             "order": { "field": "line", "type": "ordinal" },
             "tooltip": [
                 { "field": "author", "type": "nominal" },
@@ -133,16 +165,16 @@ mod tests {
     }
 
     #[test]
-    fn spec_encoding_is_stacked_bar() {
+    fn spec_encoding_is_stacked_bands() {
         let spec = build_spec(&sample_grid());
-        assert_eq!(spec["encoding"]["x"]["field"], "revision");
-        assert_eq!(spec["encoding"]["x"]["type"], "ordinal");
-        assert_eq!(spec["encoding"]["x"]["scale"]["padding"], 0);
-        assert_eq!(spec["encoding"]["y"]["field"], "size");
-        assert_eq!(spec["encoding"]["y"]["stack"], true);
-        assert_eq!(spec["encoding"]["y"]["scale"]["reverse"], true);
+        assert_eq!(spec["encoding"]["x"]["field"], "x");
+        assert_eq!(spec["encoding"]["x"]["type"], "quantitative");
+        assert_eq!(spec["encoding"]["x2"]["field"], "x2");
+        assert_eq!(spec["encoding"]["y"]["field"], "y");
+        assert_eq!(spec["encoding"]["y2"]["field"], "y2");
         assert_eq!(spec["encoding"]["color"]["field"], "author");
         assert_eq!(spec["encoding"]["order"]["field"], "line");
+        assert_eq!(spec["mark"], "rect");
     }
 
     #[test]

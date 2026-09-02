@@ -147,7 +147,8 @@ struct PipelineFlags {
     fuzzy_thresh: Option<f64>,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
     match cli.command {
         Commands::Probe(args) => {
@@ -239,27 +240,13 @@ fn main() {
         }
 
         Commands::Serve(args) => {
-            let cfg = config_from_flags(args.pipeline, args.target);
-            let grid = match run_pipeline(&cfg) {
-                Ok(g) => g,
-                Err(e) => {
-                    eprintln!("error: {e}");
-                    std::process::exit(1);
-                }
-            };
-            let spec = history_flow::visualize::build_spec(&grid);
-            let html = history_flow::visualize::html_page(&spec);
-
-            let server = match tiny_http::Server::http(&args.addr) {
-                Ok(s) => s,
-                Err(e) => {
-                    eprintln!("error: cannot bind {}: {e}", args.addr);
-                    std::process::exit(1);
-                }
-            };
-            eprintln!("serving on http://{}", args.addr);
-            for request in server.incoming_requests() {
-                let _ = request.respond(tiny_http::Response::from_string(html.clone()));
+            let addr: std::net::SocketAddr = args.addr.parse().unwrap_or_else(|e| {
+                eprintln!("error: invalid address '{}': {e}", args.addr);
+                std::process::exit(1);
+            });
+            if let Err(e) = history_flow::web::run_server(addr).await {
+                eprintln!("error: {e}");
+                std::process::exit(1);
             }
         }
     }
