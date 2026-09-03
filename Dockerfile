@@ -1,4 +1,4 @@
-FROM rust:1.83-slim AS builder
+FROM rust:1.85-slim AS builder
 
 RUN apt-get update && apt-get install -y pkg-config libssl-dev git && rm -rf /var/lib/apt/lists/*
 
@@ -8,7 +8,7 @@ RUN cargo build --release
 
 FROM debian:bookworm-slim
 
-RUN apt-get update && apt-get install -y ca-certificates git && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates git libssl3 && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/target/release/history-flow /usr/local/bin/
 
