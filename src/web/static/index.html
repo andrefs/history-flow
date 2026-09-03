@@ -170,10 +170,10 @@ button{padding:0.5rem 1rem;font-size:1rem}
   document.getElementById('theme-toggle').addEventListener('click', async () => {
     if (!view || !spec) return;
     darkMode = !darkMode;
-    const themedSpec = applyTheme(spec, darkMode);
+    spec = applyTheme(spec, darkMode);
     const viewHost = document.getElementById('pane-interactive');
     viewHost.innerHTML = '<div id="view"></div>';
-    const res = await vegaEmbed('#view', themedSpec, { actions: false });
+    const res = await vegaEmbed('#view', spec, { actions: false });
     view = res.view;
     // Update SVG tab too
     document.getElementById('pane-svg').innerHTML = await view.toSVG();
