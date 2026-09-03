@@ -1,0 +1,4 @@
+target/
+.opencode/
+.git/
+assets/images/
