@@ -100,7 +100,7 @@ struct ServeArgs {
     config: Option<String>,
 
     /// Host:port to listen on
-    #[arg(default_value = "127.0.0.1:8080", value_name = "HOST:PORT")]
+    #[arg(long = "addr", default_value = "127.0.0.1:8080", value_name = "HOST:PORT")]
     addr: String,
 }
 

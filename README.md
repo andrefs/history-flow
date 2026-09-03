@@ -36,8 +36,8 @@ history-flow render "Evolution"                        # Wikipedia title
 history-flow render https://en.wikipedia.org/wiki/Evolution
 history-flow render --source git --repo /path/to/repo --page notes.txt
 history-flow render --source git --repo owner/repo --page README.md --mode last --last 50
-history-flow serve                   # open http://127.0.0.1:8080 and enter a target
-history-flow serve 0.0.0.0:8080       # custom bind address (positional HOST:PORT)
+history-flow serve                       # open http://127.0.0.1:8080 and enter a target
+history-flow serve --addr 0.0.0.0:8080    # custom bind address
 ```
 
 `render` emits a self-contained HTML page (Vega-Lite spec + bundled JS inlined,
@@ -62,13 +62,12 @@ cost). Large or long-lived sources benefit from `--mode last --last 100`.
 ## Web interface
 
 ```
-history-flow serve [HOST:PORT] [<url-or-title>]
+history-flow serve [--addr HOST:PORT] [<url-or-title>]
 ```
 
-Starts the interactive web app (default `127.0.0.1:8080`). The bind address is a
-positional `HOST:PORT` (optional). A positional target or `--url`/`--page` may be
-given to pre-fill the input, but you can also just open the page and type a
-target. Features:
+Starts the interactive web app (default `127.0.0.1:8080`). Use `--addr` to set a
+custom bind address. A positional target or `--url`/`--page` may be given to
+pre-fill the input, but you can also just open the page and type a target. Features:
 
 - **Single input**: a Wikipedia title/URL or GitHub `blob/<rev>/<path>` URL.
 - **Advanced options**: collapsible panel for attribution/import/matching.
