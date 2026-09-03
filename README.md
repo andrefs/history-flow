@@ -11,7 +11,7 @@ piece `git blame` cannot do.
 
 ## Screenshots
 
-(to be added)
+![History of the potato](assets/images/potato2.png)
 
 ## Delivery forms
 
