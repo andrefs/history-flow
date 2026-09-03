@@ -6,7 +6,7 @@ WORKDIR /app
 COPY . .
 RUN cargo build --release
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 RUN apt-get update && apt-get install -y ca-certificates git libssl3 && rm -rf /var/lib/apt/lists/*
 
