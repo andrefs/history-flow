@@ -97,12 +97,7 @@ fn run_pipeline(config: &crate::config::Config) -> Result<serde_json::Value, Str
 /// Wikipedia -> page title; GitHub -> file name; git page -> file name.
 fn chart_title(config: &crate::config::Config) -> Option<String> {
     if let Some(page) = &config.import.page {
-        return Some(
-            page.rsplit('/')
-                .next()
-                .unwrap_or(page)
-                .to_string(),
-        );
+        return Some(page.rsplit('/').next().unwrap_or(page).to_string());
     }
     let url = config.import.url.as_ref()?;
     if let Some(rest) = url.strip_prefix("https://en.wikipedia.org/wiki/") {
@@ -122,12 +117,7 @@ fn chart_title(config: &crate::config::Config) -> Option<String> {
         if let Some(i) = parts.iter().position(|&p| p == "blob") {
             let path = parts[i + 2..].join("/");
             if !path.is_empty() {
-                return Some(
-                    path.rsplit('/')
-                        .next()
-                        .unwrap_or(&path)
-                        .to_string(),
-                );
+                return Some(path.rsplit('/').next().unwrap_or(&path).to_string());
             }
         }
     }
@@ -177,8 +167,10 @@ mod tests {
     #[test]
     fn title_from_wikipedia_url() {
         assert_eq!(
-            chart_title(&cfg_with_url("https://en.wikipedia.org/wiki/History_of_the_potato"))
-                .as_deref(),
+            chart_title(&cfg_with_url(
+                "https://en.wikipedia.org/wiki/History_of_the_potato"
+            ))
+            .as_deref(),
             Some("History of the potato")
         );
     }
@@ -186,8 +178,10 @@ mod tests {
     #[test]
     fn title_from_github_blob_uses_file_name() {
         assert_eq!(
-            chart_title(&cfg_with_url("https://github.com/o/r/blob/main/src/deep/foo.rs"))
-                .as_deref(),
+            chart_title(&cfg_with_url(
+                "https://github.com/o/r/blob/main/src/deep/foo.rs"
+            ))
+            .as_deref(),
             Some("foo.rs")
         );
     }

@@ -83,7 +83,7 @@ pre-fill the input, but you can also just open the page and type a target. Featu
   without downloading full content — used by the "Size up" button.
 
 > **Remote-only.** The web server runs on the user's machine but refuses to
-> process a *local* git repository over HTTP (it only handles Wikipedia and
+> process a _local_ git repository over HTTP (it only handles Wikipedia and
 > GitHub blob URLs). Use the CLI `render`/`json` for local-repo analysis.
 
 ## CLI reference
@@ -109,12 +109,12 @@ Global source flags (shared by all pipeline subcommands):
 
 Subcommand-specific flags:
 
-| subcommand | flag | meaning |
-| ---------- | ---- | ------- |
-| `probe`    | `--json` | output probe result as JSON |
+| subcommand | flag                  | meaning                                  |
+| ---------- | --------------------- | ---------------------------------------- |
+| `probe`    | `--json`              | output probe result as JSON              |
 | `json`     | `-o, --output <FILE>` | write JSON grid to file (default stdout) |
-| `render`   | `--format json\|html` | output format (default `html`) |
-| `render`   | `-o, --output <FILE>` | write output to file (default stdout) |
+| `render`   | `--format json\|html` | output format (default `html`)           |
+| `render`   | `-o, --output <FILE>` | write output to file (default stdout)    |
 
 > **Note:** A `--config <PATH>` flag exists on all subcommands but is not yet
 > implemented; a config file loader (discovering `./config.toml`,
@@ -155,6 +155,8 @@ MIT — see [LICENSE](LICENSE) for details.
 - **IBM's History Flow** — the original visualization this project re-implements.
 - The research paper: Fernanda B. Viégas & Martin Wattenberg, _History Flow:
   Results on the Analysis and Manipulation of Wiki Histories_, CHI 2004.
+- https://www.moma.org/collection/works/110349 -- the original History Flow visualization is in the MoMA collection.
+- http://hint.fm/projects/historyflow/ -- the original History Flow project page.
 - https://github.com/rdmpage/wikihistoryflow — a related implementation.
 - Jeff Atwood, _Mixing Oil and Water — Authorship in a Wiki World_,
   https://blog.codinghorror.com/mixing-oil-and-water-authorship-in-a-wiki-world/
