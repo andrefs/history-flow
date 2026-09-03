@@ -66,6 +66,7 @@ button{padding:0.5rem 1rem;font-size:1rem}
   <div class="downloads" id="downloads" style="display:none">
     <button type="button" id="dl-json">Download JSON</button>
     <button type="button" id="dl-png">Download PNG</button>
+    <button type="button" id="theme-toggle" title="Toggle dark/light theme">🌓</button>
   </div>
 </div>
 
@@ -149,6 +150,33 @@ button{padding:0.5rem 1rem;font-size:1rem}
     } catch (err) {
       showError(err.message);
     }
+  });
+
+  // Theme toggle: modify spec background/title/legend colors and re-render.
+  let darkMode = true;
+  function applyTheme(spec, dark) {
+    spec = JSON.parse(JSON.stringify(spec));
+    spec.background = dark ? 'black' : 'white';
+    if (spec.title) {
+      spec.title.color = dark ? 'white' : 'black';
+    }
+    if (spec.encoding?.color?.legend) {
+      spec.encoding.color.legend.labelColor = dark ? 'white' : 'black';
+      spec.encoding.color.legend.titleColor = dark ? 'white' : 'black';
+    }
+    return spec;
+  }
+
+  document.getElementById('theme-toggle').addEventListener('click', async () => {
+    if (!view || !spec) return;
+    darkMode = !darkMode;
+    const themedSpec = applyTheme(spec, darkMode);
+    const viewHost = document.getElementById('pane-interactive');
+    viewHost.innerHTML = '<div id="view"></div>';
+    const res = await vegaEmbed('#view', themedSpec, { actions: false });
+    view = res.view;
+    // Update SVG tab too
+    document.getElementById('pane-svg').innerHTML = await view.toSVG();
   });
 
   targetInput.addEventListener('input', () => {
