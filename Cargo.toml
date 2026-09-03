@@ -3,6 +3,20 @@ name = "history-flow"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
+description = "History Flow visualization for Wikipedia and Git — author-colored stacked-bar chart showing document evolution with provenance-based attribution"
+repository = "https://github.com/andrefs/history-flow"
+homepage = "https://github.com/andrefs/history-flow"
+documentation = "https://docs.rs/history-flow"
+readme = "README.md"
+categories = ["visualization", "command-line-utilities", "web-programming"]
+keywords = [
+  "history-flow",
+  "wikipedia",
+  "git",
+  "visualization",
+  "vega-lite",
+  "attribution",
+]
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
