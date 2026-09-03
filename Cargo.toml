@@ -9,14 +9,7 @@ homepage = "https://github.com/andrefs/history-flow"
 documentation = "https://docs.rs/history-flow"
 readme = "README.md"
 categories = ["visualization", "command-line-utilities", "web-programming"]
-keywords = [
-  "history-flow",
-  "wikipedia",
-  "git",
-  "visualization",
-  "vega-lite",
-  "attribution",
-]
+keywords = ["history-flow", "wikipedia", "git", "visualization", "vega-lite"]
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
