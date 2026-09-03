@@ -15,4 +15,4 @@ COPY --from=builder /app/target/release/history-flow /usr/local/bin/
 ENV PORT=8080
 EXPOSE 8080
 
-CMD ["sh", "-c", "history-flow serve --addr 0.0.0.0:$PORT"]
+CMD ["sh", "-c", "history-flow serve \"0.0.0.0:$PORT\""]
