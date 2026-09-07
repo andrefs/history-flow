@@ -1,6 +1,6 @@
 [package]
 name = "history-flow"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 license = "MIT"
 description = "History Flow visualization for Wikipedia and Git — author-colored stacked-bar chart showing document evolution with provenance-based attribution"
