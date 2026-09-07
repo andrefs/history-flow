@@ -59,6 +59,11 @@ history-flow probe --json https://github.com/owner/repo/blob/main/README.md
 `--mode all` renders every revision (`last=200` / `nth=5` defaults bound the
 cost). Large or long-lived sources benefit from `--mode last --last 100`.
 
+Regardless of mode, the number of revisions processed is hard-capped at
+`HISTORY_FLOW_MAX_REVISIONS` (default `2000`) to bound memory and CPU usage.
+Set it to `100` on resource-constrained deployments, e.g. via Fly.io's
+`[env]` section in `fly.toml`.
+
 ## Web interface
 
 ```
@@ -139,6 +144,7 @@ HTTP. Structured output goes to stdout; progress and timings go to stderr.
 | `attr-mode`       | `provenance` |
 | `match-mode`      | `exact`      |
 | `fuzzy-thresh`    | 0.95         |
+| max revisions     | 2000         |
 
 A `config.toml` file-loader (discovery of `--config`, `./config.toml`,
 `~/.config/history-flow/config.toml`) is planned; flags currently override these
