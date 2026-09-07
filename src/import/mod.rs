@@ -106,21 +106,37 @@ pub fn import_revisions(config: &Config) -> Result<Vec<Revision>, ImportError> {
     }
 }
 
+/// Default hard cap on the number of revisions processed, regardless of mode.
+/// Overridden by the `HISTORY_FLOW_MAX_REVISIONS` env var.
+const DEFAULT_MAX_REVISIONS: usize = 2000;
+
+/// Return the effective max-revisions cap from `HISTORY_FLOW_MAX_REVISIONS`,
+/// or [`DEFAULT_MAX_REVISIONS`] if unset or unparseable.
+pub fn max_revisions() -> usize {
+    std::env::var("HISTORY_FLOW_MAX_REVISIONS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(DEFAULT_MAX_REVISIONS)
+}
+
 /// Apply `mode` to a fetched revision list: all, last=N, or every Nth.
+/// The result is capped at the value returned by [`max_revisions`].
 pub fn select_revisions(
     revisions: Vec<Revision>,
     mode: ImportMode,
     last: usize,
     nth: usize,
 ) -> Vec<Revision> {
-    match mode {
+    let mut selected = match mode {
         ImportMode::All => revisions,
         ImportMode::Last => {
             let skip = revisions.len().saturating_sub(last);
             revisions.into_iter().skip(skip).collect()
         }
         ImportMode::Nth => revisions.into_iter().step_by(nth).collect(),
-    }
+    };
+    selected.truncate(max_revisions());
+    selected
 }
 
 /// Resolve which source and target page a config names. Applies the
