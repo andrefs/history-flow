@@ -11,6 +11,7 @@ FROM debian:trixie-slim
 RUN apt-get update && apt-get install -y ca-certificates git libssl3 && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/target/release/history-flow /usr/local/bin/
+COPY --from=builder /app/assets /app/assets
 
 ENV PORT=8080
 EXPOSE 8080
